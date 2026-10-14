@@ -22,7 +22,7 @@ class GastosDB extends Dexie {
 
 export const db = new GastosDB();
 
-const DEFAULT_SETTINGS: Settings = { ownerNames: [], potStart: {} };
+const DEFAULT_SETTINGS: Settings = { ownerNames: [], potStart: {}, trackFrom: '', investStart: {} };
 
 export async function getSettings(): Promise<Settings> {
   const row = await db.kv.get('settings');

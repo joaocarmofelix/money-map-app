@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Settings, Tx } from '../lib/types';
-import { accountBalances, monthStats, potBalances } from '../lib/stats';
-import { catById, accountName } from '../lib/categories';
+import { accountBalances, investBalances, monthStats, potBalances, unassignedPotMoney } from '../lib/stats';
+import { catById, accountName, investName } from '../lib/categories';
 import { fmt, monthLabel, shiftMonth } from '../lib/text';
 
 export function Summary({
@@ -23,6 +23,9 @@ export function Summary({
   const prev = useMemo(() => monthStats(txs, shiftMonth(month, -1)), [txs, month]);
   const pots = useMemo(() => potBalances(txs, settings, `${month}-31`), [txs, settings, month]);
   const balances = useMemo(() => accountBalances(txs), [txs]);
+  const invest = useMemo(() => investBalances(txs, settings), [txs, settings]);
+  const unassigned = useMemo(() => unassignedPotMoney(txs, settings), [txs, settings]);
+  const total = Object.values(balances).reduce((a, b) => a + b.balance, 0) + invest.reduce((a, b) => a + b.invested, 0);
   const allUncat = txs.filter((t) => !t.categoryId && t.kind !== 'transfer').length;
 
   if (!txs.length) {
@@ -47,7 +50,9 @@ export function Summary({
         <p className="big num">{fmt(s.food)}</p>
         <div className="perf" />
         <div className="foot">
-          {s.food === 0 ? (
+          {s.food === 0 && s.uncategorized > 0 ? (
+            <span>Categoriza os movimentos deste mês para veres este valor.</span>
+          ) : s.food === 0 ? (
             <span className="zero">Nada fora do cartão refeição. É este o objetivo.</span>
           ) : (
             <button
@@ -76,8 +81,8 @@ export function Summary({
           <dd className="num">{fmt(s.income)}</dd>
         </div>
         <div className="pot">
-          <dt>Para appartes</dt>
-          <dd className="num">{fmt(s.toPots)}</dd>
+          <dt>Poupaste</dt>
+          <dd className="num">{fmt(s.toPots + s.toInvest)}</dd>
         </div>
       </dl>
 
@@ -125,15 +130,17 @@ export function Summary({
               </div>
             ))}
           </div>
-          {Object.keys(settings.potStart).length === 0 && (
-            <p className="muted">Só conta o que entrou desde o primeiro extrato. Define o saldo inicial de cada apparte em Mais.</p>
+          {unassigned !== null && Math.abs(unassigned) > 0.005 && (
+            <p className="muted">
+              {fmt(unassigned)} no apparte ainda não estão atribuídos a nenhum. Indica quanto tinha cada um no início em Mais.
+            </p>
           )}
         </>
       )}
 
-      {Object.keys(balances).length > 0 && (
+      {(Object.keys(balances).length > 0 || invest.length > 0) && (
         <>
-          <h2>Saldos no último extrato</h2>
+          <h2>O que tens</h2>
           <ul className="list-plain">
             {Object.entries(balances).map(([acc, b]) => (
               <li key={acc}>
@@ -146,7 +153,20 @@ export function Summary({
                 <span className="num">{fmt(b.balance)}</span>
               </li>
             ))}
+            {invest.map((i) => (
+              <li key={i.id}>
+                <span>
+                  {investName(i.id)} <span className="muted">· investido</span>
+                </span>
+                <span className="num">{fmt(i.invested)}</span>
+              </li>
+            ))}
+            <li>
+              <strong>Total</strong>
+              <strong className="num">{fmt(total)}</strong>
+            </li>
           </ul>
+          <p className="muted">Contas pelo saldo do último extrato. Na Trading 212 conta o dinheiro que lá puseste, não o valor de mercado.</p>
         </>
       )}
     </>

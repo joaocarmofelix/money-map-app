@@ -13,6 +13,8 @@ const dayDiff = (a: string, b: string) => Math.abs((Date.parse(a) - Date.parse(b
 export interface ImportPlan {
   add: Tx[];
   skipped: number;
+  /** Movements before the tracking start date, left out */
+  tooOld: number;
   /** manual tx id -> key of the imported tx that replaces it */
   merges: { manualId: number; key: string }[];
 }
@@ -47,8 +49,13 @@ export function planImport(
   const usedManual = new Set<number>();
   const seen = new Map<string, number>();
   let skipped = 0;
+  let tooOld = 0;
 
   for (const t of parsed) {
+    if (settings.trackFrom && t.date < settings.trackFrom) {
+      tooOld++;
+      continue;
+    }
     const base = `${t.account}|${t.date}|${t.amount.toFixed(2)}|${norm(t.description)}`;
     const occ = seen.get(base) ?? 0;
     seen.set(base, occ + 1);
@@ -57,8 +64,8 @@ export function planImport(
       skipped++;
       continue;
     }
-    const { kind, pot } = classify(t, settings.ownerNames, potList);
-    const tx: Tx = { ...t, key, kind, pot, source: 'import' };
+    const { kind, pot, invest } = classify(t, settings.ownerNames, potList);
+    const tx: Tx = { ...t, key, kind, pot, invest, source: 'import' };
     if (kind !== 'transfer') tx.categoryId = matchRule(t.description, rules, kind)?.categoryId;
 
     if (kind === 'expense') {
@@ -82,5 +89,5 @@ export function planImport(
     }
     add.push(tx);
   }
-  return { add, skipped, merges };
+  return { add, skipped, merges, tooOld };
 }

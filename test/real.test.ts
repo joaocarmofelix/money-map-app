@@ -20,7 +20,7 @@ describe.skipIf(!has)('real statements', () => {
     console.log(r.warnings, r.closing, r.txs.length);
     expect(r.warnings).toEqual([]);
     expect(r.txs.length).toBe(52);
-    const settings = { ownerNames: ['JOAO PEDRO CARMO FELIX'], potStart: {} };
+    const settings = { ownerNames: ['JOAO PEDRO CARMO FELIX'], potStart: {}, trackFrom: '', investStart: {} };
     const plan = planImport(r.txs, new Set(), [], [], settings, []);
     const kinds = plan.add.reduce((a, t) => ({ ...a, [t.kind]: (a[t.kind] ?? 0) + 1 }), {} as Record<string, number>);
     console.log(kinds, [...new Set(plan.add.filter(t => t.pot).map(t => `${t.account}:${t.pot}`))]);

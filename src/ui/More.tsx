@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, exportBackup, getSettings, knownPots, restoreBackup, saveSettings } from '../lib/db';
-import { catById } from '../lib/categories';
+import { catById, INVESTMENTS } from '../lib/categories';
 import { isOwnTransfer } from '../lib/classify';
 import { toast } from './shared';
 import type { Settings } from '../lib/types';
@@ -41,6 +41,28 @@ export function More() {
     setS(next);
   }
 
+  async function saveStart(date: string) {
+    const next = { ...s!, trackFrom: date };
+    await saveSettings(next);
+    setS(next);
+    if (!date) return;
+    const old = await db.txs.where('date').below(date).primaryKeys();
+    await db.txs.bulkDelete(old);
+    toast(old.length ? `Guardado. Saíram ${old.length} movimentos anteriores.` : 'Guardado');
+  }
+
+  async function setInvest(id: string, v: string) {
+    const n = parseFloat(v.replace(',', '.'));
+    const investStart = { ...s!.investStart };
+    if (Number.isFinite(n)) investStart[id] = n;
+    else delete investStart[id];
+    const next = { ...s!, investStart };
+    await saveSettings(next);
+    setS(next);
+  }
+
+  const startLabel = s.trackFrom ? s.trackFrom.split('-').reverse().join('/') : 'o início';
+
   async function backup() {
     const blob = new Blob([await exportBackup()], { type: 'application/json' });
     const a = document.createElement('a');
@@ -72,10 +94,27 @@ export function More() {
         Guardar nome
       </button>
 
+      <h2>Começar a contar em</h2>
+      <p className="muted">Movimentos anteriores a esta data ficam de fora. Os saldos das contas vêm dos extratos, por isso o dinheiro que já lá tinhas continua a contar.</p>
+      <div className="field">
+        <input type="date" value={s.trackFrom} onChange={(e) => saveStart(e.target.value)} aria-label="Data de início" />
+      </div>
+
+      <h2>Investimentos</h2>
+      {INVESTMENTS.map((i) => (
+        <div className="field" key={i.id}>
+          <label htmlFor={`inv-${i.id}`}>
+            {i.name}: já investido antes de {startLabel}
+          </label>
+          <input id={`inv-${i.id}`} inputMode="decimal" defaultValue={s.investStart[i.id] ?? ''} onBlur={(e) => setInvest(i.id, e.target.value)} placeholder="0,00" />
+        </div>
+      ))}
+      <p className="muted">Transferências com “Trading 212” na descrição contam como investimento, não como gasto. Se alguma não for reconhecida, abre-a em Movimentos e marca-a.</p>
+
       {pots.length > 0 && (
         <>
-          <h2>Saldo inicial dos appartes</h2>
-          <p className="muted">O extrato só mostra o total. Indica quanto tinha cada um antes do primeiro extrato importado.</p>
+          <h2>Appartes em {startLabel}</h2>
+          <p className="muted">O extrato só mostra o total dos appartes. Indica quanto tinha cada um nessa data.</p>
           {pots.map((p) => (
             <div className="field" key={p}>
               <label htmlFor={`pot-${p}`}>{p}</label>

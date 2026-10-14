@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { CATEGORIES, accountName, catById } from '../lib/categories';
+import { CATEGORIES, accountName, catById, investName } from '../lib/categories';
 import type { Tx } from '../lib/types';
 import { fmt, pretty } from '../lib/text';
 
@@ -53,7 +53,9 @@ export function TxRow({ t, onClick, showDate }: { t: Tx; onClick: () => void; sh
   const c = catById(t.categoryId);
   const isTr = t.kind === 'transfer';
   const sub = isTr
-    ? t.pot
+    ? t.invest
+      ? `Investimento · ${investName(t.invest)}`
+      : t.pot
       ? `Apparte ${t.pot}`
       : 'Transferência entre contas tuas'
     : (c?.name ?? 'Por categorizar');
@@ -61,7 +63,7 @@ export function TxRow({ t, onClick, showDate }: { t: Tx; onClick: () => void; sh
     <button className="tx" onClick={onClick}>
       {isTr ? (
         <span className="em" aria-hidden>
-          🔁
+          {t.invest ? '📈' : '🔁'}
         </span>
       ) : c ? (
         <span className="em" aria-hidden>

@@ -29,6 +29,8 @@ export interface Tx {
   categoryId?: string;
   /** Apparte name for transfers to/from savings pots */
   pot?: string;
+  /** Investment account this transfer feeds (e.g. 't212') */
+  invest?: string;
   source: 'import' | 'manual';
   note?: string;
   importId?: number;
@@ -55,7 +57,12 @@ export interface ImportLog {
 
 export interface Settings {
   ownerNames: string[];
+  /** Apparte balances on trackFrom */
   potStart: Record<string, number>;
+  /** Only movements on/after this date are kept (YYYY-MM-DD, '' = everything) */
+  trackFrom: string;
+  /** Amount already invested before trackFrom, per investment account */
+  investStart: Record<string, number>;
 }
 
 /** What a parser returns before dedup */

@@ -1,6 +1,6 @@
 import type { Kind, ParsedTx, Rule } from './types';
 import { containsWord, norm } from './text';
-import { INCOME_IDS } from './categories';
+import { INCOME_IDS, INVESTMENTS } from './categories';
 
 /** Apparte transfers look like "TRF P/ MillenniumBcp     Stocks" / "TRF DE Transferencia MillenniumBcp Fun". */
 export function potName(desc: string, knownPots: string[] = []): string | null {
@@ -23,7 +23,9 @@ export function classify(
   t: ParsedTx,
   ownerNames: string[],
   knownPots: string[],
-): { kind: Kind; pot?: string } {
+): { kind: Kind; pot?: string; invest?: string } {
+  const inv = INVESTMENTS.find((i) => i.match.test(t.description));
+  if (inv) return { kind: 'transfer', invest: inv.id };
   const pot = potName(t.description, knownPots);
   if (pot) return { kind: 'transfer', pot };
   if (t.account === 'mil-apparte') return { kind: 'transfer' };

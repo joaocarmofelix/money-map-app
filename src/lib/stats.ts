@@ -1,5 +1,5 @@
 import type { Settings, Tx } from './types';
-import { FOOD_IDS } from './categories';
+import { FOOD_IDS, INVESTMENTS } from './categories';
 
 export interface MonthStats {
   spent: number;
@@ -7,6 +7,7 @@ export interface MonthStats {
   food: number;
   foodTxs: Tx[];
   toPots: number;
+  toInvest: number;
   byCategory: { id: string; total: number; count: number }[];
   uncategorized: number;
 }
@@ -18,11 +19,13 @@ export function monthStats(all: Tx[], ym: string): MonthStats {
   let income = 0;
   let food = 0;
   let toPots = 0;
+  let toInvest = 0;
   let uncategorized = 0;
   const foodTxs: Tx[] = [];
   for (const t of txs) {
     if (t.kind === 'transfer') {
       if (t.account === 'mil-apparte') toPots += t.amount;
+      if (t.invest) toInvest += -t.amount;
       continue;
     }
     if (!t.categoryId) uncategorized++;
@@ -47,6 +50,7 @@ export function monthStats(all: Tx[], ym: string): MonthStats {
     food,
     foodTxs: foodTxs.sort((a, b) => a.amount - b.amount),
     toPots,
+    toInvest,
     byCategory: [...by.entries()].map(([id, v]) => ({ id, ...v })).sort((a, b) => b.total - a.total),
     uncategorized,
   };
@@ -69,4 +73,24 @@ export function accountBalances(all: Tx[]): Record<string, { balance: number; da
   const sorted = [...all].filter((t) => t.balance !== undefined).sort((a, b) => a.date.localeCompare(b.date) || (a.id ?? 0) - (b.id ?? 0));
   for (const t of sorted) out[t.account] = { balance: t.balance!, date: t.date };
   return out;
+}
+
+/** Money put into each investment account: what you had before tracking + transfers since. */
+export function investBalances(all: Tx[], settings: Settings, upTo?: string): { id: string; invested: number }[] {
+  return INVESTMENTS.map((i) => {
+    let v = settings.investStart[i.id] ?? 0;
+    for (const t of all) if (t.invest === i.id && (!upTo || t.date <= upTo)) v += -t.amount;
+    return { id: i.id, invested: v };
+  }).filter((x) => x.invested !== 0 || settings.investStart[x.id] !== undefined);
+}
+
+/** Apparte money not assigned to any named pot (usually a missing starting balance). */
+export function unassignedPotMoney(all: Tx[], settings: Settings): number | null {
+  const last = [...all]
+    .filter((t) => t.account === 'mil-apparte' && t.balance !== undefined)
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.id ?? 0) - (b.id ?? 0))
+    .pop();
+  if (!last) return null;
+  const assigned = potBalances(all, settings, last.date).reduce((s, p) => s + p.balance, 0);
+  return Math.round((last.balance! - assigned) * 100) / 100;
 }

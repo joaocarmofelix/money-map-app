@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Kind, Tx } from '../lib/types';
 import { Sheet, CategoryGrid, toast } from './shared';
 import { categorize, db } from '../lib/db';
-import { accountName } from '../lib/categories';
+import { accountName, INVESTMENTS, investName } from '../lib/categories';
 import { fmt, suggestPattern } from '../lib/text';
 
 /** Category picker + "remember for similar" — shared by the edit sheet and triage. */
@@ -39,8 +39,8 @@ export function CategorizeBlock({ t, onDone }: { t: Tx; onDone: () => void }) {
 export function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
   const [note, setNote] = useState(t.note ?? '');
 
-  async function setKind(kind: Kind) {
-    await db.txs.update(t.id!, { kind, categoryId: kind === 'transfer' ? undefined : t.categoryId });
+  async function setKind(kind: Kind, invest?: string) {
+    await db.txs.update(t.id!, { kind, invest, categoryId: kind === 'transfer' ? undefined : t.categoryId });
     onClose();
   }
 
@@ -54,7 +54,9 @@ export function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
       {t.kind === 'transfer' ? (
         <>
           <p>
-            {t.pot
+            {t.invest
+              ? `Dinheiro para investir na ${investName(t.invest)}. Não conta como gasto.`
+              : t.pot
               ? `Movimento do apparte ${t.pot}. Não conta como gasto.`
               : 'Transferência entre contas tuas. Não conta como gasto.'}
           </p>
@@ -72,6 +74,11 @@ export function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
           <button className="btn ghost" onClick={() => setKind('transfer')}>
             É uma transferência entre contas minhas
           </button>
+          {INVESTMENTS.map((i) => (
+            <button key={i.id} className="btn ghost" onClick={() => setKind('transfer', i.id)}>
+              É dinheiro para a {i.name}
+            </button>
+          ))}
         </>
       )}
       {t.source === 'manual' && (

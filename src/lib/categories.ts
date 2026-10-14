@@ -7,6 +7,9 @@ export const ACCOUNTS: Account[] = [
   { id: 'cash', name: 'Dinheiro' },
 ];
 
+export const INVESTMENTS = [{ id: 't212', name: 'Trading 212', match: /TRADING ?212/i }];
+export const investName = (id: string) => INVESTMENTS.find((i) => i.id === id)?.name ?? id;
+
 export const accountName = (id: string) => ACCOUNTS.find((a) => a.id === id)?.name ?? id;
 
 export const CATEGORIES: Category[] = [

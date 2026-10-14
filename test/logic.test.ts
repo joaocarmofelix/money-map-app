@@ -24,7 +24,7 @@ SALDO INICIAL 0.00
 SALDO FINAL 200.00
 `.split('\n');
 
-const settings = { ownerNames: ['ANA SILVA TESTE'], potStart: {} };
+const settings = { ownerNames: ['ANA SILVA TESTE'], potStart: {}, trackFrom: '', investStart: {} };
 
 describe('millennium parser', () => {
   const r = parseMillenniumLines(LINES);
@@ -86,5 +86,19 @@ describe('kind-aware rules', () => {
     const rules = [{ pattern: 'MARIA EDUARDA', categoryId: 'outros-in', createdAt: 0 }];
     expect(matchRule('TRF MB WAY P/ MARIA EDUARDA X', rules, 'expense')).toBeUndefined();
     expect(matchRule('TRF. P/O MARIA EDUARDA X', rules, 'income')?.categoryId).toBe('outros-in');
+  });
+});
+
+describe('start date and investments', () => {
+  it('drops movements before trackFrom and treats Trading 212 as investment', () => {
+    const parsed = [
+      { account: 'mil', date: '2025-09-30', amount: -5, description: 'COMPRA 1 CAFE', balance: 95 },
+      { account: 'mil', date: '2025-10-01', amount: -100, description: 'TRF P/ Trading 212 Markets Ltd', balance: -5 },
+    ];
+    const s = { ownerNames: [], potStart: {}, trackFrom: '2025-10-01', investStart: { t212: 1741 } };
+    const plan = planImport(parsed, new Set(), [], [], s, []);
+    expect(plan.tooOld).toBe(1);
+    expect(plan.add).toHaveLength(1);
+    expect(plan.add[0]).toMatchObject({ kind: 'transfer', invest: 't212' });
   });
 });

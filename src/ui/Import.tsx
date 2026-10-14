@@ -9,6 +9,7 @@ interface Outcome {
   added: number;
   skipped: number;
   merged: number;
+  tooOld?: number;
   from?: string;
   to?: string;
   warnings: string[];
@@ -41,6 +42,7 @@ export function Import({ onNeedName, onTriage }: { onNeedName: () => void; onTri
           added: plan.add.length,
           skipped: plan.skipped,
           merged: plan.merges.length,
+          tooOld: plan.tooOld,
           from: dates[0],
           to: dates[dates.length - 1],
           warnings: parsed.warnings,
@@ -81,6 +83,7 @@ export function Import({ onNeedName, onTriage }: { onNeedName: () => void; onTri
           <ul>
             {r.added > 0 && <li>{r.added} movimentos novos</li>}
             {r.skipped > 0 && <li>{r.skipped} já existiam e foram ignorados</li>}
+            {!!r.tooOld && <li>{r.tooOld} anteriores à data de início ficaram de fora</li>}
             {r.merged > 0 && <li>{r.merged} gastos que apontaste à mão foram ligados ao movimento do banco</li>}
             {r.warnings.map((w) => (
               <li key={w} className="warn">
