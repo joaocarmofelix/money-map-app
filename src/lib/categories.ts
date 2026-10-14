@@ -12,7 +12,7 @@ export const INVESTMENTS = [{ id: 't212', name: 'Trading 212', match: /TRADING ?
 export const investName = (id: string) => INVESTMENTS.find((i) => i.id === id)?.name ?? id;
 
 /** Ids of the default income categories, for rules saved before rules carried their own flag. */
-export const DEFAULT_INCOME_IDS = new Set(['salario', 'reembolso', 'outros-in', 'subsidios', 'irs', 'sidehustle-in', 'invest-in', 'cartao-refeicao']);
+export const DEFAULT_INCOME_IDS = new Set(['salario', 'reembolso', 'outros-in', 'subsidios', 'irs', 'sidehustle-in', 'invest-in', 'cartao-refeicao', 'eu-in']);
 
 let o = 0;
 const c = (id: string, name: string, icon: string, color: number, extra: Partial<Category> = {}): Category => ({
@@ -89,6 +89,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
   sub('sidehustle', 'sh-marketing', 'Publicidade', 'megaphone'),
   c('presentes', 'Presentes', 'gift', 5),
   c('pessoas', 'Pessoas', 'handheart', 1),
+  sub('pessoas', 'eu', 'Eu (contas que não acompanho)', 'wallet'),
+  sub('pessoas', 'familia', 'Família', 'heart'),
+  sub('pessoas', 'amigos', 'Amigos e contas divididas', 'handheart'),
   c('taxas', 'Impostos e taxas', 'landmark', 7),
   sub('taxas', 'comissoes', 'Comissões bancárias', 'creditcard'),
   sub('taxas', 'impostos', 'Impostos', 'receipt'),
@@ -104,6 +107,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   c('irs', 'IRS Jovem e reembolso de IRS', 'landmark', 1, { income: true }),
   c('sidehustle-in', 'Side hustles', 'store', 0, { income: true }),
   c('invest-in', 'Rendimentos de investimentos', 'trending', 6, { income: true }),
+  c('eu-in', 'De contas minhas que não acompanho', 'wallet', 1, { income: true }),
   c('outros-in', 'Outras entradas', 'coins', 7, { income: true }),
 ];
 

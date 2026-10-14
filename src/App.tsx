@@ -16,6 +16,8 @@ import { GoalsPage } from './ui/Goals';
 import { QuickAdd } from './ui/QuickAdd';
 import { EditTx } from './ui/EditTx';
 import { Triage } from './ui/Triage';
+import { OwnTransfersSheet } from './ui/OwnTransfers';
+import { unpairedOwnTransfers } from './lib/stats';
 
 type Tab = 'home' | 'insights' | 'movements' | 'more';
 
@@ -39,6 +41,7 @@ function Shell() {
   const [adding, setAdding] = useState(params.get('add') === '1');
   const [editing, setEditing] = useState<Tx | null>(null);
   const [triage, setTriage] = useState<{ intro?: string } | null>(null);
+  const [own, setOwn] = useState(false);
 
   const txs = useLiveQuery(() => db.txs.toArray(), []);
   const settings = useLiveQuery(getSettings, []);
@@ -97,6 +100,7 @@ function Shell() {
             go={(w) => (w === 'insights' || w === 'movements' ? go(w) : go('more', w))}
             onOpen={setEditing}
             onTriage={() => setTriage({})}
+            onOwn={() => setOwn(true)}
           />
         )}
         {tab === 'insights' && <Insights txs={txs} month={month} setMonth={pickMonth} nav={nav} onCategory={showCategory} />}
@@ -150,6 +154,7 @@ function Shell() {
           }}
         />
       )}
+      {own && <OwnTransfersSheet list={unpairedOwnTransfers(txs)} onClose={() => setOwn(false)} />}
       <Toaster />
     </div>
   );

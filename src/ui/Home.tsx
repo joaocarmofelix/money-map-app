@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownToLine, ChevronRight, Flame, AlertTriangle, Tags, Target, FileWarning, Upload, Plus, SlidersHorizontal } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeftRight, ChevronRight, Flame, AlertTriangle, Tags, Target, FileWarning, Upload, Plus, SlidersHorizontal } from 'lucide-react';
 import type { Goal, Settings, Tx } from '../lib/types';
-import { accountBalances, accountList, budgetStatus, monthStats, netWorth } from '../lib/stats';
+import { accountBalances, accountList, budgetStatus, monthStats, netWorth, unpairedOwnTransfers } from '../lib/stats';
 import { fmt, monthLabel, today } from '../lib/text';
 import { Bar, IconTile, TxRow, useCats } from './kit';
 import { GoalEditor, GoalRow, useGoals } from './Goals';
@@ -19,6 +19,7 @@ export function Home({
   go,
   onOpen,
   onTriage,
+  onOwn,
 }: {
   txs: Tx[];
   settings: Settings;
@@ -26,6 +27,7 @@ export function Home({
   go: (where: HomeTarget) => void;
   onOpen: (t: Tx) => void;
   onTriage: () => void;
+  onOwn: () => void;
 }) {
   const cx = useCats();
   const s = useMemo(() => monthStats(txs, month, cx), [txs, month, cx]);
@@ -35,6 +37,7 @@ export function Home({
   const [goalEdit, setGoalEdit] = useState<Goal | 'new' | null>(null);
   const recent = useMemo(() => [...txs].sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)).slice(0, 5), [txs]);
   const uncat = txs.filter((t) => !t.categoryId && t.kind !== 'transfer').length;
+  const unpaired = useMemo(() => unpairedOwnTransfers(txs), [txs]);
   const first = settings.ownerNames[0]?.split(' ')[0];
   const name = first ? first[0] + first.slice(1).toLowerCase() : '';
 
@@ -131,7 +134,7 @@ export function Home({
           </button>
         </div>
 
-        {(budgetAlerts.length > 0 || uncat > 0 || stale) && (
+        {(budgetAlerts.length > 0 || uncat > 0 || stale || unpaired.length > 0) && (
           <div className="stack" style={{ gap: 8 }}>
             {budgetAlerts.slice(0, 2).map(({ r, st }) => (
               <button key={r.id} className={`alert ${st.state}`} onClick={() => go('insights')}>
@@ -154,6 +157,20 @@ export function Home({
                 </span>
                 <span className="al-t">
                   <b>{uncat} movimentos por categorizar</b>Categoriza um e a app trata dos parecidos.
+                </span>
+                <ChevronRight size={18} className="muted" />
+              </button>
+            )}
+            {unpaired.length > 0 && (
+              <button className="alert warn" onClick={onOwn}>
+                <span className="ic">
+                  <ArrowLeftRight size={18} />
+                </span>
+                <span className="al-t">
+                  <b>
+                    {unpaired.length} {unpaired.length === 1 ? 'transferência para ti sem par' : 'transferências para ti sem par'}
+                  </b>
+                  Diz se foram para uma conta que a app não acompanha.
                 </span>
                 <ChevronRight size={18} className="muted" />
               </button>

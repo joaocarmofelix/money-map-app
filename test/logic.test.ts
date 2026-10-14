@@ -141,3 +141,12 @@ describe('suggestions from history', () => {
     expect(order[3].tx.description).toContain('FNAC');
   });
 });
+
+import { unpairedOwnTransfers } from '../src/lib/stats';
+describe('own transfers', () => {
+  const tr = (id: number, account: string, date: string, amount: number, extra: Partial<Tx> = {}): Tx => ({ id, key: String(id), account, date, amount, description: 'TRF', kind: 'transfer', source: 'import', ...extra });
+  it('pairs Millennium → Bankinter and flags the one that went elsewhere', () => {
+    const list = [tr(1, 'mil', '2026-10-01', -500), tr(2, 'bkt', '2026-10-02', 500), tr(3, 'mil', '2026-10-05', -70), tr(4, 'mil', '2026-10-06', -100, { pot: 'Stocks' }), tr(5, 'mil', '2026-10-07', -30, { confirmed: true })];
+    expect(unpairedOwnTransfers(list).map((t) => t.id)).toEqual([3]);
+  });
+});

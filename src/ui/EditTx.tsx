@@ -7,6 +7,7 @@ import { CatIcon, Sheet, toast, useCats } from './kit';
 import { Sparkles } from 'lucide-react';
 import { buildSuggester, type Suggestion } from '../lib/suggest';
 import { CategoryPicker } from './CategoryPicker';
+import { OwnTransferChoices } from './OwnTransfers';
 
 /** Category picker + "remember for similar". Shared by the edit sheet and the triage flow. */
 export function CategorizeBlock({ t, onDone, suggestion, similar = 0 }: { t: Tx; onDone: () => void; suggestion?: Suggestion | null; similar?: number }) {
@@ -95,8 +96,9 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
                   ? `Movimento do apparte ${t.pot}. Não conta como gasto.`
                   : 'Transferência entre contas tuas. Não conta como gasto.'}
             </p>
+            {!t.pot && !t.invest && <OwnTransferChoices t={t} onDone={onClose} />}
             <button className="btn ghost" onClick={() => setKind(t.amount < 0 ? 'expense' : 'income')}>
-              Não é transferência, contar como {t.amount < 0 ? 'gasto' : 'entrada'}
+              Não é para mim, contar como {t.amount < 0 ? 'gasto' : 'entrada'} normal
             </button>
           </>
         ) : (

@@ -205,3 +205,24 @@ export function goalProgress(g: Goal, all: Tx[], settings: Settings, cx: CatInde
   }
   return { current, pct: g.target ? current / g.target : 0, left, perMonth, done: current >= g.target };
 }
+
+/**
+ * Transfers to/from yourself where the other side isn't in any imported statement
+ * (same amount, opposite sign, another account, within 5 days). Usually money that went to
+ * an account the app doesn't track, or a statement that hasn't been imported yet.
+ */
+export function unpairedOwnTransfers(all: Tx[]): Tx[] {
+  const own = all.filter((t) => t.kind === 'transfer' && !t.pot && !t.invest && t.account !== 'mil-apparte');
+  const used = new Set<number>();
+  const out: Tx[] = [];
+  const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400000;
+  for (const t of own) {
+    if (used.has(t.id!)) continue;
+    const m = own.find((o) => o.id !== t.id && !used.has(o.id!) && o.account !== t.account && Math.abs(o.amount + t.amount) < 0.005 && days(o.date, t.date) <= 5);
+    if (m) {
+      used.add(t.id!);
+      used.add(m.id!);
+    } else if (!t.confirmed) out.push(t);
+  }
+  return out;
+}

@@ -41,6 +41,11 @@ class MoneyMapDB extends Dexie {
           r.categoryId = remap(r.categoryId)!;
         });
       });
+    // v4: categories for money moved to/from your own accounts that the app doesn't track.
+    this.version(4).upgrade(async (tx) => {
+      const have = new Set(((await tx.table('categories').toCollection().primaryKeys()) as string[]));
+      await tx.table('categories').bulkAdd(DEFAULT_CATEGORIES.filter((c) => ['eu', 'familia', 'amigos', 'eu-in'].includes(c.id) && !have.has(c.id)));
+    });
     this.on('populate', (tx) => {
       tx.table('categories').bulkAdd(DEFAULT_CATEGORIES);
     });

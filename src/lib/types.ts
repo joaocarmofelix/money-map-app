@@ -39,6 +39,8 @@ export interface Tx {
   pot?: string;
   /** Investment account this transfer feeds (e.g. 't212') */
   invest?: string;
+  /** You confirmed this own transfer is between tracked accounts, even without a matching movement */
+  confirmed?: boolean;
   source: 'import' | 'manual';
   note?: string;
   importId?: number;
