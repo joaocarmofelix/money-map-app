@@ -3,8 +3,13 @@ import { containsWord, norm } from './text';
 import { DEFAULT_INCOME_IDS, INVESTMENTS } from './categories';
 
 /** Apparte transfers look like "TRF P/ MillenniumBcp     Stocks" / "TRF DE Transferencia MillenniumBcp Fun". */
+/**
+ * Apparte name from a description. Millennium writes:
+ *  - putting money in:  "TRF P/ MillenniumBcp     Stocks" / "TRF DE Transferencia MillenniumBcp Stocks"
+ *  - taking money out:  "TRF DE Apparte - Moneybox" (on the main account)
+ */
 export function potName(desc: string, knownPots: string[] = []): string | null {
-  const m = desc.match(/MillenniumBcp\s+(.+)$/i);
+  const m = desc.match(/MillenniumBcp\s+(.+)$/i) ?? desc.match(/\bApparte\s*-\s*(.+)$/i);
   if (!m) return null;
   const raw = m[1].replace(/\s+/g, ' ').trim();
   // The apparte side truncates names ("Future Go"); map back to a known pot.

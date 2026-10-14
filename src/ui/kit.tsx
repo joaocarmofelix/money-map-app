@@ -88,7 +88,16 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
   const people = usePeople();
   const person = t.personId ? people.get(t.personId) : undefined;
   const isTr = t.kind === 'transfer';
-  const base = person ? person.name : t.source === 'import' ? pretty(t.description) : t.description;
+  const potTitle = t.pot
+    ? t.account === 'mil-apparte'
+      ? t.amount > 0
+        ? `Entrou no apparte ${t.pot}`
+        : `Saiu do apparte ${t.pot}`
+      : t.amount > 0
+        ? `Tirado do apparte ${t.pot}`
+        : `Guardado no apparte ${t.pot}`
+    : null;
+  const base = potTitle ?? (person ? person.name : t.source === 'import' ? pretty(t.description) : t.description);
   const title = t.note && t.source === 'import' ? (person ? `${person.name} · ${t.note}` : t.note) : base;
   const sub = isTr
     ? t.cash

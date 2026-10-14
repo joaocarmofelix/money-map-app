@@ -19,7 +19,8 @@ export function parseMillenniumLines(lines: string[]): ParseResult {
   let startMonth = 0;
   let prev: number | null = null;
 
-  const lineRe = new RegExp(String.raw`^(\d\d)\.(\d\d) \d\d\.\d\d (.+?)\s+(${NUM})\s+(${NUM})$`);
+  // Not anchored at the start: stray page text can precede a movement on the same line.
+  const lineRe = new RegExp(String.raw`(?:^|\s)(\d\d)\.(\d\d) \d\d\.\d\d (.+?)\s+(${NUM})\s+(${NUM})$`);
   const openRe = new RegExp(String.raw`^(SALDO INICIAL|TRANSPORTE)\s+(-?${NUM})$`);
   const closeRe = new RegExp(String.raw`^SALDO FINAL\s+(-?${NUM})$`);
 

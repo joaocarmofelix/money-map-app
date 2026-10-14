@@ -98,6 +98,18 @@ export function planImport(
     add.push(tx);
   }
 
+  // Taking money out of an apparte: the apparte side only says "TRF P/ <your name>", without the
+  // apparte's name. Borrow it from the matching entry on the main account (same day, same amount).
+  const usedPot = new Set<number>();
+  add.forEach((t) => {
+    if (t.account !== 'mil-apparte' || t.pot) return;
+    const i = add.findIndex((o, j) => !usedPot.has(j) && o.account !== 'mil-apparte' && o.pot && o.date === t.date && Math.abs(o.amount + t.amount) < 0.005);
+    if (i >= 0) {
+      usedPot.add(i);
+      t.pot = add[i].pot;
+    }
+  });
+
   const pairs = matchManual(add, manual);
   const merges: ImportPlan['merges'] = [];
   for (const [i, m] of pairs) {

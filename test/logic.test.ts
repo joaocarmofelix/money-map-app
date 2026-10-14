@@ -269,3 +269,30 @@ describe('salary counted for next month', () => {
     expect(applySalaryShift([sal], { ...s, salaryShiftDay: undefined }, cx)[0].statsMonth).toBeUndefined();
   });
 });
+
+describe('taking money out of an apparte', () => {
+  it('recognises both sides and the apparte name', () => {
+    const lines = `
+CONTA MILLENNIUM N. 1 MOEDA: EUR
+EXTRATO DE 2025/10/01 A 2025/10/31
+SALDO INICIAL 73.52
+10.02 10.02 TRF DE Apparte - Moneybox 100.00 173.52
+10.22 10.22 TRF DE Apparte - Moneybox 250.00 423.52
+SALDO FINAL 423.52
+CONTA APPARTE N. 2 MOEDA: EUR
+EXTRATO DE 2025/10/01 A 2025/10/31
+SALDO INICIAL 5 500.00
+10.02 10.02 TRF P/ ANA SILVA TESTE CS 100.00 5 400.00
+10.22 10.22 TRF P/ ANA SILVA TESTE CS 250.00 5 150.00
+SALDO FINAL 5 150.00
+`.split('\n');
+    const r = parseMillenniumLines(lines);
+    const plan = planImport(r.txs, new Set(), [], [], { ownerNames: ['ANA SILVA TESTE'], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [] }, []);
+    expect(plan.add.map((t) => [t.account, t.kind, t.pot, t.amount])).toEqual([
+      ['mil', 'transfer', 'Moneybox', 100],
+      ['mil', 'transfer', 'Moneybox', 250],
+      ['mil-apparte', 'transfer', 'Moneybox', -100],
+      ['mil-apparte', 'transfer', 'Moneybox', -250],
+    ]);
+  });
+});

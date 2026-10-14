@@ -29,6 +29,15 @@ describe.skipIf(!has)('real statements', () => {
     const again = planImport(r.txs, new Set(plan.add.map(t => t.key)), [], [], settings, []);
     expect(again.add.length).toBe(0);
   });
+  it('parses the October 2025 statement', async () => {
+    if (!existsSync(`${DIR}/oct.pdf`)) return;
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(`${DIR}/oct.pdf`)) }).promise;
+    const r = parseMillenniumLines(await linesFromDoc(doc));
+    expect(r.warnings).toEqual([]);
+    const plan = planImport(r.txs, new Set(), [], [], { ownerNames: ['JOAO PEDRO CARMO FELIX'], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [] }, []);
+    console.log(plan.add.map((t) => `${t.account} ${t.date} ${t.amount} ${t.kind} ${t.pot ?? ''} ${t.description}`).join('\n'));
+  });
   it('parses Bankinter xls', () => {
     const wb = XLSX.read(readFileSync(`${DIR}/b.xls`), { cellDates: true });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null }) as any[][];

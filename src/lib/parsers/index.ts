@@ -31,6 +31,8 @@ export async function linesFromDoc(doc: any): Promise<string[]> {
     const rows: { y: number; items: { x: number; s: string }[] }[] = [];
     for (const it of content.items as TextItemLike[]) {
       if (!('str' in it) || !it.str.trim()) continue;
+      // Skip rotated text (the bank's sideways footer), which would otherwise merge into movement lines.
+      if (Math.abs(it.transform[1]) > 0.01 || Math.abs(it.transform[2]) > 0.01) continue;
       const x = it.transform[4];
       const y = it.transform[5];
       let row = rows.find((r) => Math.abs(r.y - y) < 2.5);
