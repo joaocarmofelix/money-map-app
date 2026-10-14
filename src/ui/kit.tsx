@@ -111,6 +111,7 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
         <small>
           {sub} · {accountName(t.account)}
           {t.source === 'manual' && t.account !== 'cash' ? ' · à espera do extrato' : ''}
+          {t.statsMonth ? ` · conta em ${monthLabel(t.statsMonth).split(' ')[0]}` : ''}
         </small>
         {!!t.tags?.length && (
           <span className="tx-tags">

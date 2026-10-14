@@ -104,6 +104,41 @@ export function SetupPage() {
       </section>
 
       <section className="card stack">
+        <div className="toggle-row">
+          <span>
+            <b>O salário do fim do mês conta para o mês seguinte</b>
+            <span className="small muted" style={{ display: 'block' }}>
+              Recebes no fim do mês e gastas no seguinte? Assim cada mês mostra o salário que realmente o pagou. Só muda os resumos e gráficos; os saldos seguem a data real.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={!!s.salaryShiftDay}
+            onChange={async (e) => {
+              const on = e.target.checked;
+              await update({ salaryShiftDay: on ? 25 : undefined });
+              toast(on ? 'O salário do fim do mês passa a contar no mês seguinte' : 'O salário conta no mês em que entra');
+            }}
+            aria-label="Salário do fim do mês conta no mês seguinte"
+          />
+        </div>
+        {!!s.salaryShiftDay && (
+          <div className="field">
+            <label htmlFor="shift-day">A partir do dia</label>
+            <select id="shift-day" value={s.salaryShiftDay} onChange={(e) => update({ salaryShiftDay: Number(e.target.value) })}>
+              {Array.from({ length: 12 }, (_, i) => 20 + i).map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <span className="hint">Salários recebidos neste dia ou depois contam no mês seguinte.</span>
+          </div>
+        )}
+      </section>
+
+      <section className="card stack">
         <div className="field">
           <label htmlFor="start">Começar a contar em</label>
           <input id="start" type="date" value={s.trackFrom} onChange={(e) => saveStart(e.target.value)} />

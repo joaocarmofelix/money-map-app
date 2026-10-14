@@ -255,3 +255,17 @@ describe('debts', () => {
     expect(debtsWith([d(1, -40, 'A receber'), d(2, 25, 'Acerto de contas'), d(3, 15, 'Devo')], 1)).toEqual({ owesYou: 15, youOwe: 15, net: 0 });
   });
 });
+
+import { applySalaryShift } from '../src/lib/stats';
+describe('salary counted for next month', () => {
+  it('moves an end-of-month salary to the next month in reports only', () => {
+    const cx = indexCategories(DEFAULT_CATEGORIES);
+    const sal: Tx = { id: 1, key: 's', account: 'mil', date: '2025-10-30', amount: 1668, description: 'PAGAMENTO DE VENCIMENTO', kind: 'income', categoryId: 'salario', source: 'import' };
+    const early: Tx = { ...sal, id: 2, key: 'e', date: '2025-10-10' };
+    const s = { ownerNames: [], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [], salaryShiftDay: 25 };
+    const v = applySalaryShift([sal, early], s, cx);
+    expect(monthStats(v, '2025-10', cx).income).toBe(1668);
+    expect(monthStats(v, '2025-11', cx).income).toBe(1668);
+    expect(applySalaryShift([sal], { ...s, salaryShiftDay: undefined }, cx)[0].statsMonth).toBeUndefined();
+  });
+});

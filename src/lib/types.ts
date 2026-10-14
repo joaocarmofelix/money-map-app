@@ -47,6 +47,8 @@ export interface Tx {
   personId?: number;
   /** Cash withdrawal (ATM): money moved to the Dinheiro account */
   cash?: boolean;
+  /** Month this movement counts toward in reports, when it differs from its date (computed, never stored) */
+  statsMonth?: string;
   /** You confirmed this own transfer is between tracked accounts, even without a matching movement */
   confirmed?: boolean;
   source: 'import' | 'manual';
@@ -85,6 +87,8 @@ export interface Settings {
   investStart: Record<string, number>;
   /** Account keys hidden from the home screen (mil, bkt, pot:<name>, inv:<id>) */
   hiddenAccounts: string[];
+  /** Salary received on or after this day of the month counts toward the next month in reports (off when unset) */
+  salaryShiftDay?: number;
   /** The data is the built-in example set */
   demo?: boolean;
   /** You cleared the example data; don't load it again automatically */

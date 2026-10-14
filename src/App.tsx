@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, Home as HomeIcon, List, Menu, PieChart, Plus } from 'lucide-react';
 import { db, getSettings, loadDemo } from './lib/db';
 import { shiftMonth, today } from './lib/text';
 import type { Tx } from './lib/types';
-import { CatsProvider, Toaster, setAppBack } from './ui/kit';
+import { CatsProvider, Toaster, setAppBack, useCats } from './ui/kit';
 import { Home } from './ui/Home';
 import { Insights } from './ui/Insights';
 import { Movements, type Filter } from './ui/Movements';
@@ -18,7 +18,7 @@ import { QuickAdd } from './ui/QuickAdd';
 import { EditTx } from './ui/EditTx';
 import { Triage } from './ui/Triage';
 import { OwnTransfersSheet } from './ui/OwnTransfers';
-import { unpairedOwnTransfers } from './lib/stats';
+import { applySalaryShift, unpairedOwnTransfers } from './lib/stats';
 
 type Tab = 'home' | 'insights' | 'movements' | 'more';
 
@@ -44,8 +44,11 @@ function Shell() {
   const [triage, setTriage] = useState<{ intro?: string } | null>(null);
   const [own, setOwn] = useState(false);
 
-  const txs = useLiveQuery(() => db.txs.toArray(), []);
+  const rawTxs = useLiveQuery(() => db.txs.toArray(), []);
   const settings = useLiveQuery(getSettings, []);
+  const cx = useCats();
+  // Reports may count end-of-month salary in the next month (option in Perfil).
+  const txs = useMemo(() => (rawTxs && settings ? applySalaryShift(rawTxs, settings, cx) : rawTxs), [rawTxs, settings, cx]);
 
   useEffect(() => {
     if (params.toString()) history.replaceState(null, '', location.pathname);

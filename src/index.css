@@ -377,3 +377,5 @@ button:active:not(:disabled), label.drop:active { transform: scale(.97); }
 .cat-table td:first-child { text-align: left; white-space: normal; }
 .cat-table td:first-child span { display: inline-flex; align-items: center; gap: 8px; }
 .cat-table th + th, .cat-table td + td { padding-left: 12px; }
+.toggle-row { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+.check input.toggle { width: 44px; height: 26px; }

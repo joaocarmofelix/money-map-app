@@ -19,7 +19,7 @@ export interface MonthStats {
 }
 
 export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
-  const txs = all.filter((t) => t.date.startsWith(ym));
+  const txs = all.filter((t) => monthOf(t) === ym);
   const roots = new Map<string, { total: number; count: number }>();
   const byCat = new Map<string, number>();
   let spent = 0;
@@ -78,7 +78,7 @@ export function history(all: Tx[], endYm: string, n: number, cx: CatIndex) {
   for (let i = n - 1; i >= 0; i--) {
     const ym = shiftMonth(endYm, -i);
     const s = monthStats(all, ym, cx);
-    out.push({ ym, spent: s.spent, saved: s.toPots + s.toInvest, income: s.income, hasData: all.some((t) => t.date.startsWith(ym)) });
+    out.push({ ym, spent: s.spent, saved: s.toPots + s.toInvest, income: s.income, hasData: all.some((t) => monthOf(t) === ym) });
   }
   return out;
 }
@@ -215,7 +215,7 @@ export function goalProgress(g: Goal, all: Tx[], settings: Settings, cx: CatInde
     let streak = 0;
     for (let i = 1; i <= 24; i++) {
       const m = shiftMonth(ym, -i);
-      if (!all.some((t) => t.date.startsWith(m))) break;
+      if (!all.some((t) => monthOf(t) === m)) break;
       const ms = monthStats(all, m, cx);
       if (ms.toPots + ms.toInvest >= g.target) streak++;
       else break;
@@ -294,4 +294,22 @@ export function computedBalance(all: Tx[], account: string) {
     mismatch: Math.abs(mismatch) > 0.005 ? mismatch : 0,
     manualAfter,
   };
+}
+
+/** The month a movement counts toward in reports. */
+export const monthOf = (t: Tx) => t.statsMonth ?? t.date.slice(0, 7);
+
+/**
+ * With the "salary counts for next month" option, a salary received at the end of the month
+ * (on or after the chosen day) is reported in the following month, when it's actually spent.
+ * Only reports change; balances keep following the real dates.
+ */
+export function applySalaryShift(all: Tx[], settings: Settings, cx: CatIndex): Tx[] {
+  const day = settings.salaryShiftDay;
+  if (!day) return all;
+  return all.map((t) =>
+    t.kind === 'income' && cx.root(t.categoryId)?.id === 'salario' && Number(t.date.slice(8, 10)) >= day
+      ? { ...t, statsMonth: shiftMonth(t.date.slice(0, 7), 1) }
+      : t,
+  );
 }
