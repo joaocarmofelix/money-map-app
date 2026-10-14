@@ -27,4 +27,4 @@ dist-ssr
 *.xls
 *.xlsx
 *.json.bak
-gastos-*.json
+moneymap-*.json

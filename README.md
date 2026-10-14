@@ -1,4 +1,4 @@
-# Gastos
+# MoneyMap
 
 App (PWA) para perceber para onde vai o dinheiro, a partir dos extratos do banco.
 

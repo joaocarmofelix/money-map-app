@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  // Relative base so the same build works on GitHub Pages (/gastos/) or any host root.
+  // Relative base so the same build works on GitHub Pages (/moneymap/) or any host root.
   base: './',
   plugins: [
     react(),
@@ -12,8 +12,8 @@ export default defineConfig({
       includeAssets: ['icon.svg'],
       workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,mjs}'], maximumFileSizeToCacheInBytes: 6_000_000 },
       manifest: {
-        name: 'Gastos',
-        short_name: 'Gastos',
+        name: 'MoneyMap',
+        short_name: 'MoneyMap',
         description: 'Para onde vai o teu dinheiro, a partir dos extratos do banco.',
         lang: 'pt-PT',
         start_url: './',

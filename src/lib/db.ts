@@ -4,13 +4,13 @@ import { planImport } from './importer';
 import { norm } from './text';
 import { matchRule } from './classify';
 
-class GastosDB extends Dexie {
+class MoneyMapDB extends Dexie {
   txs!: Table<Tx, number>;
   rules!: Table<Rule, number>;
   imports!: Table<ImportLog, number>;
   kv!: Table<{ k: string; v: unknown }, string>;
   constructor() {
-    super('gastos');
+    super('moneymap');
     this.version(1).stores({
       txs: '++id, &key, date, account, kind, categoryId, source',
       rules: '++id, &pattern',
@@ -20,7 +20,7 @@ class GastosDB extends Dexie {
   }
 }
 
-export const db = new GastosDB();
+export const db = new MoneyMapDB();
 
 const DEFAULT_SETTINGS: Settings = { ownerNames: [], potStart: {}, trackFrom: '', investStart: {} };
 
@@ -90,7 +90,7 @@ export async function categorize(txId: number, categoryId: string, pattern: stri
 export async function exportBackup(): Promise<string> {
   return JSON.stringify(
     {
-      app: 'gastos',
+      app: 'moneymap',
       version: 1,
       exportedAt: new Date().toISOString(),
       txs: await db.txs.toArray(),
@@ -105,7 +105,7 @@ export async function exportBackup(): Promise<string> {
 
 export async function restoreBackup(json: string) {
   const data = JSON.parse(json);
-  if (data.app !== 'gastos') throw new Error('Este ficheiro não é uma cópia de segurança desta app.');
+  if (data.app !== 'moneymap') throw new Error('Este ficheiro não é uma cópia de segurança desta app.');
   await db.transaction('rw', db.txs, db.rules, db.imports, db.kv, async () => {
     await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear()]);
     await db.txs.bulkAdd(data.txs);

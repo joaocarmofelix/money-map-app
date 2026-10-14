@@ -4,7 +4,7 @@ import { db } from '../lib/db';
 import { ACCOUNTS } from '../lib/categories';
 import { today } from '../lib/text';
 
-const LAST_ACC = 'gastos:lastAccount';
+const LAST_ACC = 'moneymap:lastAccount';
 function lastAccount() {
   try {
     return localStorage.getItem(LAST_ACC) ?? 'mil';
