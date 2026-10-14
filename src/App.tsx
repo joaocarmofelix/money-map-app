@@ -36,7 +36,7 @@ function Shell() {
   const [cat, setCat] = useState<string | null>(null);
   const [adding, setAdding] = useState(params.get('add') === '1');
   const [editing, setEditing] = useState<Tx | null>(null);
-  const [triage, setTriage] = useState(false);
+  const [triage, setTriage] = useState<{ intro?: string } | null>(null);
 
   const txs = useLiveQuery(() => db.txs.toArray(), []);
   const settings = useLiveQuery(getSettings, []);
@@ -71,7 +71,7 @@ function Shell() {
     setFilter('all');
     go('movements');
   };
-  const closeTriage = useCallback(() => setTriage(false), []);
+  const closeTriage = useCallback(() => setTriage(null), []);
 
   if (!txs || !settings) return null;
 
@@ -94,7 +94,7 @@ function Shell() {
             month={month}
             go={(w) => (w === 'import' ? go('more', 'import') : w === 'setup' ? go('more', 'setup') : go(w))}
             onOpen={setEditing}
-            onTriage={() => setTriage(true)}
+            onTriage={() => setTriage({})}
             onFood={() => showCategory('_food')}
           />
         )}
@@ -111,7 +111,7 @@ function Shell() {
               </button>
               <h1 style={{ fontSize: 20 }}>{MORE_TITLES[page]}</h1>
             </header>
-            {page === 'import' && <ImportPage onTriage={() => setTriage(true)} />}
+            {page === 'import' && <ImportPage onTriage={(intro) => setTriage({ intro })} />}
             {page === 'categories' && <CategoriesPage />}
             {page === 'setup' && <SetupPage />}
             {page === 'rules' && <RulesPage />}
@@ -133,8 +133,20 @@ function Shell() {
       </nav>
 
       {adding && <QuickAdd onClose={() => setAdding(false)} />}
-      {editing && <EditTx t={editing} onClose={() => setEditing(null)} />}
-      {triage && <Triage txs={txs} onClose={closeTriage} />}
+      {editing && <EditTx t={editing} history={txs} onClose={() => setEditing(null)} />}
+      {triage && (
+        <Triage
+          txs={txs}
+          intro={triage.intro}
+          onClose={closeTriage}
+          onShowLater={() => {
+            setTriage(null);
+            setCat(null);
+            setFilter('uncat');
+            go('movements');
+          }}
+        />
+      )}
       <Toaster />
     </div>
   );

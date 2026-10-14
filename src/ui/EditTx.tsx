@@ -3,11 +3,13 @@ import type { Kind, Tx } from '../lib/types';
 import { categorize, db } from '../lib/db';
 import { accountName, INVESTMENTS, investName } from '../lib/categories';
 import { fmt, pretty, suggestPattern } from '../lib/text';
-import { Sheet, toast, useCats } from './kit';
+import { CatIcon, Sheet, toast, useCats } from './kit';
+import { Sparkles } from 'lucide-react';
+import { buildSuggester, type Suggestion } from '../lib/suggest';
 import { CategoryPicker } from './CategoryPicker';
 
 /** Category picker + "remember for similar". Shared by the edit sheet and the triage flow. */
-export function CategorizeBlock({ t, onDone }: { t: Tx; onDone: () => void }) {
+export function CategorizeBlock({ t, onDone, suggestion, similar = 0 }: { t: Tx; onDone: () => void; suggestion?: Suggestion | null; similar?: number }) {
   const cx = useCats();
   const [pattern, setPattern] = useState(suggestPattern(t.description));
   const [remember, setRemember] = useState(t.source === 'import');
@@ -20,12 +22,30 @@ export function CategorizeBlock({ t, onDone }: { t: Tx; onDone: () => void }) {
 
   return (
     <div className="stack" style={{ gap: 12 }}>
+      {suggestion && cx.byId.get(suggestion.categoryId) && (
+        <button className="suggest" onClick={() => pick(suggestion.categoryId)}>
+          <CatIcon id={suggestion.categoryId} />
+          <span className="st">
+            <span className="small" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+              <Sparkles size={13} style={{ verticalAlign: -2 }} /> Sugestão
+            </span>
+            <b>{cx.label(suggestion.categoryId)}</b>
+            <span className="small muted">
+              Usaste-a em {suggestion.count} de {suggestion.seen} {suggestion.seen === 1 ? 'movimento parecido' : 'movimentos parecidos'}
+            </span>
+          </span>
+          <span className="btn sm" style={{ width: 'auto' }}>Aceitar</span>
+        </button>
+      )}
       <CategoryPicker value={t.categoryId} onPick={pick} income={t.kind === 'income'} />
       {t.source === 'import' && (
         <div className="card" style={{ padding: 12 }}>
           <label className="check">
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-            <span>Usar esta categoria em todos os movimentos com</span>
+            <span>
+              Usar esta categoria em todos os movimentos com esta palavra
+              {similar > 0 ? ` (mais ${similar} agora por categorizar)` : ''}
+            </span>
           </label>
           {remember && (
             <div className="field" style={{ marginTop: 8 }}>
@@ -38,7 +58,8 @@ export function CategorizeBlock({ t, onDone }: { t: Tx; onDone: () => void }) {
   );
 }
 
-export function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
+export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; history: Tx[] }) {
+  const suggestion = !t.categoryId ? buildSuggester(history)(t) : null;
   const [note, setNote] = useState(t.note ?? '');
   const [confirm, setConfirm] = useState(false);
 
@@ -80,7 +101,7 @@ export function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
           </>
         ) : (
           <>
-            <CategorizeBlock t={t} onDone={onClose} />
+            <CategorizeBlock t={t} onDone={onClose} suggestion={suggestion} />
             <div className="field">
               <label htmlFor="note">Nota</label>
               <input id="note" value={note} placeholder="Ex.: jantar de anos" onChange={(e) => setNote(e.target.value)} onBlur={() => db.txs.update(t.id!, { note: note || undefined })} />

@@ -124,3 +124,20 @@ describe('categories and budgets', () => {
     expect(budgetStatus(60, 100, '2026-10', '2026-10-10').state).toBe('warn');
   });
 });
+
+import { buildSuggester, triageOrder } from '../src/lib/suggest';
+
+describe('suggestions from history', () => {
+  const mk = (description: string, categoryId?: string, amount = -10): Tx => ({ key: description + Math.random(), account: 'mil', date: '2026-10-01', amount, description, kind: amount < 0 ? 'expense' : 'income', categoryId, source: 'import' });
+  it('proposes the category you used for the same merchant', () => {
+    const s = buildSuggester([mk('COMPRA 7782 PINGO DOCE LISBOA', 'super'), mk('COMPRA 7782 PINGO DOCE PORTO', 'super'), mk('COMPRA 7782 PINGO DOCE X', 'rest')]);
+    expect(s(mk('COMPRA 7782 PINGO DOCE C BASTO CONTACTLESS'))).toEqual({ categoryId: 'super', count: 2, seen: 3 });
+    expect(s(mk('COMPRA 7782 WORTEN LISBOA'))).toBeNull();
+  });
+  it('puts big groups of similar movements first', () => {
+    const order = triageOrder([mk('COMPRA 7782 FNAC A'), mk('COMPRA 7782 LIDL A'), mk('COMPRA 7782 LIDL B'), mk('COMPRA 7782 LIDL C')]);
+    expect(order[0].tx.description).toContain('LIDL');
+    expect(order[0].similar).toBe(2);
+    expect(order[3].tx.description).toContain('FNAC');
+  });
+});

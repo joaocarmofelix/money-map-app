@@ -11,6 +11,8 @@ interface Outcome {
   skipped: number;
   merged: number;
   tooOld?: number;
+  /** New movements still without a category */
+  open?: number;
   from?: string;
   to?: string;
   warnings: string[];
@@ -18,7 +20,7 @@ interface Outcome {
 
 const dmy = (d?: string) => (d ? d.split('-').reverse().join('/') : '');
 
-export function ImportPage({ onTriage }: { onTriage: () => void }) {
+export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<Outcome[]>([]);
   const history = useLiveQuery(() => db.imports.orderBy('at').reverse().limit(12).toArray(), []);
@@ -36,13 +38,21 @@ export function ImportPage({ onTriage }: { onTriage: () => void }) {
         }
         const plan = await runImport(f.name, parsed);
         const dates = parsed.txs.map((t) => t.date).sort();
-        out.push({ file: f.name, bank: parsed.bank, added: plan.add.length, skipped: plan.skipped, merged: plan.merges.length, tooOld: plan.tooOld, from: dates[0], to: dates[dates.length - 1], warnings: parsed.warnings });
+        out.push({ file: f.name, bank: parsed.bank, open: plan.add.filter((t) => !t.categoryId && t.kind !== 'transfer').length, added: plan.add.length, skipped: plan.skipped, merged: plan.merges.length, tooOld: plan.tooOld, from: dates[0], to: dates[dates.length - 1], warnings: parsed.warnings });
       } catch (e) {
         out.push({ file: f.name, bank: '?', added: 0, skipped: 0, merged: 0, warnings: [`Não consegui ler o ficheiro: ${(e as Error).message}`] });
       }
     }
     setResults(out);
     setBusy(false);
+    const added = out.reduce((a, r) => a + r.added, 0);
+    const open = await db.txs.filter((t) => !t.categoryId && t.kind !== 'transfer').count();
+    if (added > 0 && open > 0) {
+      const auto = added - out.reduce((a, r) => a + (r.open ?? 0), 0);
+      onTriage(
+        `${added} movimentos importados${auto > 0 ? `, ${auto} já categorizados ou marcados como transferência` : ''}. Falta categorizar ${open}.`,
+      );
+    }
   }
 
   return (
@@ -74,7 +84,7 @@ export function ImportPage({ onTriage }: { onTriage: () => void }) {
             ))}
           </ul>
           {r.added > 0 && (
-            <button className="btn sm" style={{ marginTop: 10 }} onClick={onTriage}>
+            <button className="btn sm" style={{ marginTop: 10 }} onClick={() => onTriage()}>
               Categorizar agora
             </button>
           )}
