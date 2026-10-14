@@ -5,7 +5,8 @@ import { budgetStatus, extraordinaryTotals, history, monthStats } from '../lib/s
 import { db } from '../lib/db';
 import { fmt, today } from '../lib/text';
 import { Bar, CatIcon, MonthPicker, Sheet, StatePill, colorVar, toast, useCats } from './kit';
-import { Donut, MonthBars, type Slice } from './charts';
+import { Donut, FlowBars, MonthBars, type Slice } from './charts';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function Insights({
   txs,
@@ -23,6 +24,8 @@ export function Insights({
   const cx = useCats();
   const s = useMemo(() => monthStats(txs, month, cx), [txs, month, cx]);
   const hist = useMemo(() => history(txs, month, 6, cx), [txs, month, cx]);
+  const [mode, setMode] = useState<'month' | 'year'>('month');
+  const [year, setYear] = useState(month.slice(0, 4));
   const [budgetFor, setBudgetFor] = useState<Category | null>(null);
   const extras = useMemo(() => [...extraordinaryTotals(txs, cx).entries()], [txs, cx]);
 
@@ -60,8 +63,31 @@ export function Insights({
     <>
       <header className="appbar">
         <h1>Resumo</h1>
-        <MonthPicker month={month} onChange={nav} />
+        {mode === 'month' ? (
+          <MonthPicker month={month} onChange={nav} />
+        ) : (
+          <YearPicker year={year} onChange={(d) => setYear(String(Number(year) + d))} />
+        )}
       </header>
+      <div className="seg" role="group" aria-label="Período" style={{ marginBottom: 14 }}>
+        <button aria-pressed={mode === 'month'} onClick={() => setMode('month')}>
+          Mês
+        </button>
+        <button aria-pressed={mode === 'year'} onClick={() => (setYear(month.slice(0, 4)), setMode('year'))}>
+          Ano
+        </button>
+      </div>
+      {mode === 'year' ? (
+        <YearView
+          txs={txs}
+          year={year}
+          onMonth={(ym) => {
+            setMonth(ym);
+            setMode('month');
+          }}
+          onCategory={onCategory}
+        />
+      ) : (
       <div className="stack">
         <section className="card">
           <div className="card-head">
@@ -79,7 +105,16 @@ export function Insights({
 
         <section className="card">
           <div className="card-head">
-            <h2>Últimos 6 meses</h2>
+            <h2>Entrou, saiu e poupaste</h2>
+            <span className="small muted">6 meses</span>
+          </div>
+          <FlowBars data={hist.map((h) => ({ ym: h.ym, income: h.income, spent: h.spent, saved: h.saved, empty: !h.hasData }))} selected={month} onSelect={setMonth} />
+        </section>
+
+        <section className="card">
+          <div className="card-head">
+            <h2>Gastos e orçamento</h2>
+            <span className="small muted">6 meses</span>
           </div>
           <MonthBars
             data={hist.map((h) => ({ ym: h.ym, value: h.spent, empty: !h.hasData }))}
@@ -144,16 +179,6 @@ export function Insights({
           </button>
         </section>
 
-        <section className="card">
-          <div className="card-head">
-            <h2>Poupança por mês</h2>
-            <span className="small muted num">{fmt(s.toPots + s.toInvest)} este mês</span>
-          </div>
-          <MonthBars data={hist.map((h) => ({ ym: h.ym, value: h.saved, empty: !h.hasData }))} selected={month} color="var(--s3)" onSelect={setMonth} />
-          <p className="small muted" style={{ margin: '6px 0 0' }}>
-            Transferências para os appartes e para investimentos.
-          </p>
-        </section>
 
         {extras.map(([id, e]) => {
           const r = cx.byId.get(id)!;
@@ -188,6 +213,7 @@ export function Insights({
           );
         })}
       </div>
+      )}
       {budgetFor && (
         <BudgetSheet
           cat={budgetFor}
@@ -304,5 +330,145 @@ function BudgetSheet({
         </button>
       </div>
     </Sheet>
+  );
+}
+
+function YearPicker({ year, onChange }: { year: string; onChange: (d: number) => void }) {
+  const now = today().slice(0, 4);
+  return (
+    <div className="month-pick">
+      <button className="icon-btn" onClick={() => onChange(-1)} aria-label="Ano anterior">
+        <ChevronLeft size={18} />
+      </button>
+      <span>{year}</span>
+      <button className="icon-btn" onClick={() => onChange(1)} disabled={year >= now} aria-label="Ano seguinte">
+        <ChevronRight size={18} />
+      </button>
+    </div>
+  );
+}
+
+/** The whole year at a glance: totals, the twelve months side by side, and where the money went. */
+function YearView({ txs, year, onMonth, onCategory }: { txs: Tx[]; year: string; onMonth: (ym: string) => void; onCategory: (id: string) => void }) {
+  const cx = useCats();
+  const months = useMemo(() => history(txs, `${year}-12`, 12, cx), [txs, year, cx]);
+  const withData = months.filter((m) => m.hasData);
+  const tot = withData.reduce((a, m) => ({ income: a.income + m.income, spent: a.spent + m.spent, saved: a.saved + m.saved }), { income: 0, spent: 0, saved: 0 });
+  const rate = tot.income > 0 ? Math.round((tot.saved / tot.income) * 100) : null;
+
+  // Spending per top-level category over the year.
+  const byRoot = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const mo of withData) {
+      const st = monthStats(txs, mo.ym, cx);
+      for (const r of st.byRoot) m.set(r.id, (m.get(r.id) ?? 0) + r.total);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txs, year, cx]);
+  const slices: Slice[] = [];
+  byRoot.filter(([id]) => id !== '_none').slice(0, 5).forEach(([id, v]) => {
+    const c = cx.byId.get(id)!;
+    slices.push({ id, label: c.name, value: v, color: colorVar(c) });
+  });
+  const rest = byRoot.filter(([id]) => id !== '_none').slice(5).reduce((a, [, v]) => a + v, 0);
+  if (rest > 0) slices.push({ id: '_rest', label: 'Restantes', value: rest, color: 'var(--ink-3)' });
+  const none = byRoot.find(([id]) => id === '_none');
+  if (none) slices.push({ id: '_none', label: 'Por categorizar', value: none[1], color: 'var(--line)' });
+
+  if (!withData.length) {
+    return (
+      <section className="card empty">
+        <h2>Sem movimentos em {year}</h2>
+        <p>Importa extratos deste ano para veres o resumo anual.</p>
+      </section>
+    );
+  }
+  const n = withData.length;
+  return (
+    <div className="stack">
+      <section className="card">
+        <div className="card-head">
+          <h2>{year} até agora</h2>
+          <span className="small muted">
+            {n} {n === 1 ? 'mês' : 'meses'} com dados
+          </span>
+        </div>
+        <dl className="year-figs">
+          <div>
+            <dt>Entrou</dt>
+            <dd className="num" style={{ color: 'var(--good)' }}>{fmt(tot.income)}</dd>
+          </div>
+          <div>
+            <dt>Saiu</dt>
+            <dd className="num">{fmt(tot.spent)}</dd>
+          </div>
+          <div>
+            <dt>Poupaste</dt>
+            <dd className="num">{fmt(tot.saved)}</dd>
+          </div>
+          <div>
+            <dt>Taxa de poupança</dt>
+            <dd className="num">{rate === null ? '—' : `${rate}%`}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h2>Mês a mês</h2>
+          <span className="small muted">Toca num mês para o abrir</span>
+        </div>
+        <FlowBars data={months.map((h) => ({ ym: h.ym, income: h.income, spent: h.spent, saved: h.saved, empty: !h.hasData }))} onSelect={(ym) => months.find((m) => m.ym === ym)?.hasData && onMonth(ym)} />
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h2>Para onde foi o dinheiro</h2>
+        </div>
+        <Donut slices={slices} total={tot.spent} caption={`gastos em ${year}`} />
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h2>Por categoria</h2>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="cat-table">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Total</th>
+                <th>Média/mês</th>
+                <th>Orçamento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byRoot.map(([id, v]) => {
+                const c = cx.byId.get(id);
+                const avg = v / n;
+                const st = c?.budget ? budgetStatus(avg, c.budget, '0000-00', today()) : null;
+                return (
+                  <tr key={id} onClick={() => id !== '_none' && onCategory(id)} style={{ cursor: 'pointer' }}>
+                    <td>
+                      <span>
+                        <CatIcon id={c?.id} size="sm" />
+                        {c?.name ?? 'Por categorizar'}
+                      </span>
+                    </td>
+                    <td className="num">{fmt(v)}</td>
+                    <td className="num">{fmt(avg)}</td>
+                    <td>{st ? <StatePill state={st.state} text={`${Math.round(st.pct * 100)}%`} /> : <span className="muted">—</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="small muted" style={{ margin: '8px 0 0' }}>
+          Orçamento: média mensal comparada com o limite de cada mês.
+        </p>
+      </section>
+    </div>
   );
 }

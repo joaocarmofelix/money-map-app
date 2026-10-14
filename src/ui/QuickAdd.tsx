@@ -55,7 +55,17 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet onClose={onClose} label="Adicionar movimento">
+    <Sheet
+      onClose={onClose}
+      label="Adicionar movimento"
+      title={income ? 'Nova entrada' : 'Novo gasto'}
+      tall
+      footer={
+        <button className="btn" disabled={!ok} onClick={save}>
+          {ok ? `Guardar ${income ? 'entrada' : 'gasto'}` : !(value > 0) ? 'Indica o valor' : 'Escolhe a categoria'}
+        </button>
+      }
+    >
       <div className="stack">
         <div className="seg" role="group" aria-label="Tipo">
           <button aria-pressed={!income} onClick={() => (setIncome(false), setCat(undefined))}>
@@ -66,27 +76,16 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <input
-          className="amount-in num"
+          className={`amount-in num ${income ? 'in' : 'out'}`}
           inputMode="decimal"
           placeholder="0,00 €"
           autoFocus
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ''))}
+          onBlur={() => Number.isFinite(value) && value > 0 && setAmount(value.toFixed(2).replace('.', ','))}
           aria-label="Valor"
           style={{ width: '100%' }}
         />
-        <div className="field">
-          <input placeholder="Descrição (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Descrição" />
-        </div>
-        <CategoryPicker value={cat} onPick={setCat} income={income} />
-        <details className="card" style={{ padding: 12 }} open={debt}>
-          <summary className="small" style={{ fontWeight: 700, cursor: 'pointer' }}>
-            Etiquetas e dívidas
-          </summary>
-          <div style={{ marginTop: 10 }}>
-            <TagsBlock value={tags} personId={personId} amount={income ? 1 : -1} onChange={(t, p) => (setTags(t), setPersonId(p))} />
-          </div>
-        </details>
         <div className="row2">
           <div className="field">
             <label htmlFor="acc">{income ? 'Conta' : 'Pago com'}</label>
@@ -103,9 +102,22 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
             <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
-        <button className="btn" disabled={!ok} onClick={save}>
-          Guardar {income ? 'entrada' : 'gasto'}
-        </button>
+        <div className="field">
+          <label htmlFor="desc">Descrição</label>
+          <input id="desc" placeholder="Opcional, ex.: torneio TCG" value={desc} onChange={(e) => setDesc(e.target.value)} />
+        </div>
+        <span className="lbl small muted" style={{ fontWeight: 600, marginBottom: -6 }}>
+          Categoria
+        </span>
+        <CategoryPicker value={cat} onPick={setCat} income={income} />
+        <details className="card" style={{ padding: 12 }} open={debt}>
+          <summary className="small" style={{ fontWeight: 700, cursor: 'pointer' }}>
+            Etiquetas e dívidas
+          </summary>
+          <div style={{ marginTop: 10 }}>
+            <TagsBlock value={tags} personId={personId} amount={income ? 1 : -1} onChange={(t, p) => (setTags(t), setPersonId(p))} />
+          </div>
+        </details>
       </div>
     </Sheet>
   );

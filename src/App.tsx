@@ -4,7 +4,7 @@ import { ArrowLeft, Home as HomeIcon, List, Menu, PieChart, Plus } from 'lucide-
 import { db, getSettings, loadDemo } from './lib/db';
 import { shiftMonth, today } from './lib/text';
 import type { Tx } from './lib/types';
-import { CatsProvider, Toaster } from './ui/kit';
+import { CatsProvider, Toaster, setAppBack } from './ui/kit';
 import { Home } from './ui/Home';
 import { Insights } from './ui/Insights';
 import { Movements, type Filter } from './ui/Movements';
@@ -81,10 +81,25 @@ function Shell() {
     setMonth(ym);
   };
   const go = (t: Tab, p: MorePage | null = null) => {
+    // Leaving home or opening a sub-page adds a step the Android back button can undo.
+    if (p || (t !== 'home' && tab === 'home')) history.pushState({ nav: true }, '');
     setTab(t);
     setPage(p);
     window.scrollTo(0, 0);
   };
+  const where = useRef({ tab, page });
+  where.current = { tab, page };
+  useEffect(() => {
+    setAppBack(() => {
+      const { tab: t, page: p } = where.current;
+      if (p) setPage(null);
+      else if (t !== 'home') setTab('home');
+      window.scrollTo(0, 0);
+    });
+    return () => {
+      setAppBack(null);
+    };
+  }, []);
   const showCategory = (id: string) => {
     setCat(id);
     setFilter('all');

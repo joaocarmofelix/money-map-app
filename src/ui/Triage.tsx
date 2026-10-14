@@ -23,7 +23,7 @@ export function Triage({ txs, intro, onClose, onShowLater }: { txs: Tx[]; intro?
 
   if (!cur) {
     return (
-      <Sheet onClose={onClose} label="Categorizar movimentos">
+      <Sheet onClose={onClose} label="Categorizar movimentos" tall>
         <div className="done-state stack">
           <div className="qi">{later.size ? <Clock size={28} /> : <CheckCircle2 size={28} />}</div>
           <h3>{later.size ? `Ficaram ${later.size} para decidir depois` : 'Está tudo categorizado'}</h3>
@@ -54,7 +54,7 @@ export function Triage({ txs, intro, onClose, onShowLater }: { txs: Tx[]; intro?
 
   const t = cur.tx;
   return (
-    <Sheet onClose={onClose} label="Categorizar movimentos">
+    <Sheet onClose={onClose} label="Categorizar movimentos" tall>
       <div className="triage stack">
         {intro && done === 0 && later.size === 0 && <div className="intro">{intro}</div>}
         <div className="stack" style={{ gap: 6 }}>

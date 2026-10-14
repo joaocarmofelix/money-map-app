@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Flame, X } from 'lucide-react';
 import { db } from '../lib/db';
 import { accountName, indexCategories, investName, type CatIndex } from '../lib/categories';
 import type { Category, Person, Tx } from '../lib/types';
@@ -131,17 +131,112 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
 }
 
 /* ---------- sheet + toast ---------- */
-export function Sheet({ onClose, children, label }: { onClose: () => void; children: ReactNode; label: string }) {
+/* Back-button handling shared by sheets and the app's own navigation. */
+const sheetStack: { close: () => void; popped: boolean }[] = [];
+let ignorePops = 0;
+let appBack: (() => void) | null = null;
+export const setAppBack = (fn: (() => void) | null) => (appBack = fn);
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    if (ignorePops > 0) {
+      ignorePops--;
+      return;
+    }
+    const top = sheetStack[sheetStack.length - 1];
+    if (top) {
+      top.popped = true;
+      top.close();
+    } else appBack?.();
+  });
+}
+
+/**
+ * Bottom sheet. Drag the top bar down (or tap outside, the X, or Esc) to close.
+ * `tall` gives it a fixed height so switching content inside doesn't make it jump.
+ */
+export function Sheet({
+  onClose,
+  children,
+  label,
+  title,
+  tall,
+  footer,
+}: {
+  onClose: () => void;
+  children: ReactNode;
+  label: string;
+  title?: string;
+  tall?: boolean;
+  footer?: ReactNode;
+}) {
+  const [dy, setDy] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const start = useRef<number | null>(null);
+  const done = useRef(false);
+  const close = () => {
+    if (done.current) return;
+    done.current = true;
+    setClosing(true);
+    setTimeout(onClose, 180);
+  };
+  const closeRef = useRef(close);
+  closeRef.current = close;
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current();
     window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
+    // Android back button closes the sheet instead of leaving the app.
+    const entry = { close: () => closeRef.current(), popped: false };
+    sheetStack.push(entry);
+    history.pushState({ sheet: true }, '');
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', k);
+      sheetStack.splice(sheetStack.indexOf(entry), 1);
+      if (!sheetStack.length) document.body.style.overflow = '';
+      if (!entry.popped) {
+        ignorePops++;
+        history.back();
+      }
+    };
+  }, []);
   return (
-    <div className="scrim" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
-        <div className="grab" />
-        {children}
+    <div className={`scrim${closing ? ' closing' : ''}`} onClick={close}>
+      <div
+        className={`sheet${tall ? ' tall' : ''}${closing ? ' closing' : ''}${start.current !== null ? ' dragging' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        onClick={(e) => e.stopPropagation()}
+        style={dy && !closing ? { transform: `translateY(${dy}px)` } : undefined}
+      >
+        <div
+          className="sheet-top"
+          onPointerDown={(e) => {
+            if ((e.target as HTMLElement).closest('button')) return;
+            start.current = e.clientY;
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={(e) => start.current !== null && setDy(Math.max(0, e.clientY - start.current))}
+          onPointerUp={() => {
+            if (dy > 90) close();
+            else setDy(0);
+            start.current = null;
+          }}
+          onPointerCancel={() => {
+            start.current = null;
+            setDy(0);
+          }}
+        >
+          <div className="grab" aria-hidden />
+          <div className="sheet-titlebar">
+            {title ? <h3>{title}</h3> : <span />}
+            <button className="icon-btn ghost" onClick={close} aria-label="Fechar">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+        <div className="sheet-body">{children}</div>
+        {footer && <div className="sheet-foot">{footer}</div>}
       </div>
     </div>
   );

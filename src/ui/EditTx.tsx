@@ -77,7 +77,7 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
   }
 
   return (
-    <Sheet onClose={onClose} label="Editar movimento">
+    <Sheet onClose={onClose} label="Editar movimento" tall>
       <div className="stack">
         <div>
           <h3>{t.source === 'import' ? pretty(t.description) : t.description}</h3>
