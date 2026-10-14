@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
-import type { Category, ImportLog, ParseResult, Rule, Settings, Tx } from './types';
-import { DEFAULT_CATEGORIES } from './categories';
+import type { Category, Goal, ImportLog, ParseResult, Rule, Settings, Tx } from './types';
+import { DEFAULT_CATEGORIES, LEGACY_IDS } from './categories';
 import { planImport } from './importer';
 import { norm } from './text';
 import { matchRule } from './classify';
@@ -11,6 +11,7 @@ class MoneyMapDB extends Dexie {
   imports!: Table<ImportLog, number>;
   kv!: Table<{ k: string; v: unknown }, string>;
   categories!: Table<Category, string>;
+  goals!: Table<Goal, number>;
   constructor() {
     super('moneymap');
     this.version(1).stores({
@@ -22,6 +23,24 @@ class MoneyMapDB extends Dexie {
     this.version(2)
       .stores({ categories: 'id, parentId, order' })
       .upgrade((tx) => tx.table('categories').bulkPut(DEFAULT_CATEGORIES));
+    // v3: icons instead of emoji, fuller category list, goals.
+    this.version(3)
+      .stores({ goals: '++id' })
+      .upgrade(async (tx) => {
+        const ids = new Set(DEFAULT_CATEGORIES.map((c) => c.id));
+        const old = (await tx.table('categories').toArray()) as (Category & { emoji?: string })[];
+        const custom = old.filter((c) => !ids.has(c.id) && !(c.id in LEGACY_IDS)).map(({ emoji: _e, ...c }) => ({ ...c, icon: 'tag' }));
+        const budgets = new Map(old.filter((c) => c.budget).map((c) => [LEGACY_IDS[c.id] ?? c.id, c.budget]));
+        await tx.table('categories').clear();
+        await tx.table('categories').bulkAdd([...DEFAULT_CATEGORIES.map((c) => ({ ...c, budget: budgets.get(c.id) })), ...custom]);
+        const remap = (id?: string) => (id && LEGACY_IDS[id]) || id;
+        await tx.table('txs').toCollection().modify((t: Tx) => {
+          t.categoryId = remap(t.categoryId);
+        });
+        await tx.table('rules').toCollection().modify((r: Rule) => {
+          r.categoryId = remap(r.categoryId)!;
+        });
+      });
     this.on('populate', (tx) => {
       tx.table('categories').bulkAdd(DEFAULT_CATEGORIES);
     });
@@ -30,7 +49,7 @@ class MoneyMapDB extends Dexie {
 
 export const db = new MoneyMapDB();
 
-const DEFAULT_SETTINGS: Settings = { ownerNames: [], potStart: {}, trackFrom: '', investStart: {} };
+const DEFAULT_SETTINGS: Settings = { ownerNames: [], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [] };
 
 export async function getSettings(): Promise<Settings> {
   const row = await db.kv.get('settings');
@@ -114,6 +133,7 @@ export async function exportBackup(): Promise<string> {
       txs: await db.txs.toArray(),
       rules: await db.rules.toArray(),
       categories: await db.categories.toArray(),
+      goals: await db.goals.toArray(),
       imports: await db.imports.toArray(),
       settings: await getSettings(),
     },
@@ -125,7 +145,9 @@ export async function exportBackup(): Promise<string> {
 export async function restoreBackup(json: string) {
   const data = JSON.parse(json);
   if (data.app !== 'moneymap') throw new Error('Este ficheiro não é uma cópia de segurança desta app.');
-  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories], async () => {
+  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals], async () => {
+    await db.goals.clear();
+    if (data.goals?.length) await db.goals.bulkAdd(data.goals);
     await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear()]);
     if (data.categories?.length) {
       await db.categories.clear();

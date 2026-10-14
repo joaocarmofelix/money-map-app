@@ -24,7 +24,7 @@ SALDO INICIAL 0.00
 SALDO FINAL 200.00
 `.split('\n');
 
-const settings = { ownerNames: ['ANA SILVA TESTE'], potStart: {}, trackFrom: '', investStart: {} };
+const settings = { ownerNames: ['ANA SILVA TESTE'], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [] };
 
 describe('millennium parser', () => {
   const r = parseMillenniumLines(LINES);
@@ -95,7 +95,7 @@ describe('start date and investments', () => {
       { account: 'mil', date: '2025-09-30', amount: -5, description: 'COMPRA 1 CAFE', balance: 95 },
       { account: 'mil', date: '2025-10-01', amount: -100, description: 'TRF P/ Trading 212 Markets Ltd', balance: -5 },
     ];
-    const s = { ownerNames: [], potStart: {}, trackFrom: '2025-10-01', investStart: { t212: 1741 } };
+    const s = { ownerNames: [], potStart: {}, trackFrom: '2025-10-01', investStart: { t212: 1741 }, hiddenAccounts: [] };
     const plan = planImport(parsed, new Set(), [], [], s, []);
     expect(plan.tooOld).toBe(1);
     expect(plan.add).toHaveLength(1);
@@ -108,13 +108,13 @@ import { DEFAULT_CATEGORIES, indexCategories } from '../src/lib/categories';
 
 describe('categories and budgets', () => {
   const cx = indexCategories(DEFAULT_CATEGORIES);
-  it('rolls subcategory spending up to the parent and marks food', () => {
+  it('rolls subcategory spending up to the parent', () => {
     const t = (categoryId: string, amount: number): Tx => ({ key: categoryId + amount, account: 'mil', date: '2026-10-05', amount, description: 'x', kind: 'expense', categoryId, source: 'import' });
     const s = monthStats([t('onepiece', -30), t('lazer', -10), t('super', -20)], '2026-10', cx);
     expect(s.byCat.get('lazer')).toBe(40);
     expect(s.byCat.get('onepiece')).toBe(30);
     expect(s.byRoot.find((r) => r.id === 'lazer')?.total).toBe(40);
-    expect(s.food).toBe(20);
+    
   });
   it('flags budgets by amount and by pace', () => {
     expect(budgetStatus(120, 100, '2026-09', '2026-10-14').state).toBe('over');

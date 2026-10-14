@@ -11,6 +11,8 @@ import { Movements, type Filter } from './ui/Movements';
 import { ImportPage } from './ui/Import';
 import { BackupPage, MORE_TITLES, MoreMenu, RulesPage, SetupPage, type MorePage } from './ui/More';
 import { CategoriesPage } from './ui/Categories';
+import { AccountsPage } from './ui/Accounts';
+import { GoalsPage } from './ui/Goals';
 import { QuickAdd } from './ui/QuickAdd';
 import { EditTx } from './ui/EditTx';
 import { Triage } from './ui/Triage';
@@ -92,10 +94,9 @@ function Shell() {
             txs={txs}
             settings={settings}
             month={month}
-            go={(w) => (w === 'import' ? go('more', 'import') : w === 'setup' ? go('more', 'setup') : go(w))}
+            go={(w) => (w === 'insights' || w === 'movements' ? go(w) : go('more', w))}
             onOpen={setEditing}
             onTriage={() => setTriage({})}
-            onFood={() => showCategory('_food')}
           />
         )}
         {tab === 'insights' && <Insights txs={txs} month={month} setMonth={pickMonth} nav={nav} onCategory={showCategory} />}
@@ -113,6 +114,8 @@ function Shell() {
             </header>
             {page === 'import' && <ImportPage onTriage={(intro) => setTriage({ intro })} />}
             {page === 'categories' && <CategoriesPage />}
+            {page === 'accounts' && <AccountsPage txs={txs} />}
+            {page === 'goals' && <GoalsPage txs={txs} settings={settings} />}
             {page === 'setup' && <SetupPage />}
             {page === 'rules' && <RulesPage />}
             {page === 'backup' && <BackupPage />}

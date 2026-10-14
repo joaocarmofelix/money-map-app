@@ -10,14 +10,15 @@ export interface Account {
 export interface Category {
   id: string;
   name: string;
-  emoji: string;
+  /** Key into the icon set (see ui/icons.tsx) */
+  icon: string;
   /** Index into the chart palette (0-7) */
   color: number;
   /** Set for subcategories (e.g. One Piece TCG under Entretenimento) */
   parentId?: string;
-  /** Food paid from a bank account instead of the meal card (inherited by subcategories) */
-  food?: boolean;
   income?: boolean;
+  /** Hidden from the picker when categorizing (still counts in reports) */
+  hidden?: boolean;
   /** Monthly spending limit in euros */
   budget?: number;
   order: number;
@@ -72,6 +73,23 @@ export interface Settings {
   trackFrom: string;
   /** Amount already invested before trackFrom, per investment account */
   investStart: Record<string, number>;
+  /** Account keys hidden from the home screen (mil, bkt, pot:<name>, inv:<id>) */
+  hiddenAccounts: string[];
+}
+
+export interface Goal {
+  id?: number;
+  name: string;
+  icon: string;
+  /**
+   * balance: reach a balance in one account (or 'networth' for everything)
+   * monthly: put aside an amount every month (appartes + investments)
+   */
+  type: 'balance' | 'monthly';
+  account?: string;
+  target: number;
+  deadline?: string; // YYYY-MM-DD
+  createdAt: number;
 }
 
 /** What a parser returns before dedup */

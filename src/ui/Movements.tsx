@@ -38,7 +38,6 @@ export function Movements({
   const [q, setQ] = useState('');
   const inCat = (t: Tx) => {
     if (!cat) return true;
-    if (cat === '_food') return t.kind === 'expense' && cx.isFood(t.categoryId);
     let cur = t.categoryId ? cx.byId.get(t.categoryId) : undefined;
     while (cur) {
       if (cur.id === cat) return true;
@@ -63,7 +62,7 @@ export function Movements({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txs, month, filter, q, cat, cx]);
   const sum = days.flatMap(([, l]) => l).filter((t) => t.kind !== 'transfer').reduce((a, t) => a + t.amount, 0);
-  const catName = cat === '_food' ? 'Comida fora do cartão refeição' : cat ? cx.label(cat) : '';
+  const catName = cat ? cx.label(cat) : '';
 
   return (
     <>

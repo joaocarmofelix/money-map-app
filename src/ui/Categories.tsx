@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, ChevronRight } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import { db, deleteCategory } from '../lib/db';
 import type { Category } from '../lib/types';
 import { fmt } from '../lib/text';
 import { CatIcon, Sheet, toast, useCats } from './kit';
+import { IconPicker } from './icons';
 
 const SWATCHES = [0, 1, 2, 3, 4, 5, 6, 7];
 
@@ -11,10 +12,9 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
   const cx = useCats();
   const parent0 = cat?.parentId ?? parentId;
   const [name, setName] = useState(cat?.name ?? '');
-  const [emoji, setEmoji] = useState(cat?.emoji ?? '🏷️');
+  const [icon, setIcon] = useState(cat?.icon ?? (parent0 ? cx.byId.get(parent0)?.icon : undefined) ?? 'tag');
   const [color, setColor] = useState(cat?.color ?? (parent0 ? cx.byId.get(parent0)?.color : 0) ?? 0);
   const [parent, setParent] = useState(parent0 ?? '');
-  const [food, setFood] = useState(!!cat?.food);
   const [budget, setBudget] = useState(cat?.budget !== undefined ? String(cat.budget) : '');
   const [confirmDel, setConfirmDel] = useState(false);
   const isIncome = cat?.income ?? (parent0 ? cx.byId.get(parent0)?.income : income) ?? false;
@@ -28,10 +28,10 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
     const data: Category = {
       id: cat?.id ?? `c${Date.now().toString(36)}`,
       name: n,
-      emoji: emoji.trim() || '🏷️',
+      icon,
       color,
       parentId: parent || undefined,
-      food: !parent && food ? true : undefined,
+      hidden: cat?.hidden,
       income: isIncome || undefined,
       budget: !isIncome && Number.isFinite(b) && b > 0 ? b : undefined,
       order: cat?.order ?? (Math.max(0, ...cx.list.map((c) => c.order)) + 1),
@@ -45,15 +45,13 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
     <Sheet onClose={onClose} label={cat ? 'Editar categoria' : 'Nova categoria'}>
       <div className="stack">
         <h3>{cat ? 'Editar categoria' : parent0 ? 'Nova subcategoria' : 'Nova categoria'}</h3>
-        <div className="row2" style={{ gridTemplateColumns: '72px 1fr' }}>
-          <div className="field">
-            <label htmlFor="c-emoji">Ícone</label>
-            <input id="c-emoji" value={emoji} onChange={(e) => setEmoji(e.target.value)} style={{ textAlign: 'center', fontSize: 22, padding: 8 }} />
-          </div>
-          <div className="field">
-            <label htmlFor="c-name">Nome</label>
-            <input id="c-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: One Piece TCG" autoFocus={!cat} />
-          </div>
+        <div className="field">
+          <label htmlFor="c-name">Nome</label>
+          <input id="c-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: One Piece TCG" autoFocus={!cat} />
+        </div>
+        <div className="field">
+          <span className="lbl">Ícone</span>
+          <IconPicker value={icon} onPick={setIcon} />
         </div>
         {!hasKids && (
           <div className="field">
@@ -62,7 +60,7 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
               <option value="">Nenhuma (categoria principal)</option>
               {parents.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.emoji} {p.name}
+                  {p.name}
                 </option>
               ))}
             </select>
@@ -84,12 +82,6 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
             <input id="c-budget" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="Sem limite" />
             <span className="hint">{parent ? 'Conta só para esta subcategoria.' : 'Inclui o que gastares nas subcategorias.'}</span>
           </div>
-        )}
-        {!parent && !isIncome && (
-          <label className="check">
-            <input type="checkbox" checked={food} onChange={(e) => setFood(e.target.checked)} />
-            <span>É comida (conta para “comida fora do cartão refeição”)</span>
-          </label>
         )}
         <button className="btn" onClick={save} disabled={!name.trim()}>
           Guardar
@@ -126,9 +118,20 @@ export function CategoriesPage() {
   const [edit, setEdit] = useState<{ cat?: Category; parentId?: string; income?: boolean } | null>(null);
   const [type, setType] = useState<'out' | 'in'>('out');
   const roots = cx.roots.filter((r) => !!r.income === (type === 'in'));
+  const setHidden = (c: Category, hidden: boolean) => db.categories.update(c.id, { hidden: hidden || undefined });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const flip = (id: string) => setExpanded((e) => {
+    const n = new Set(e);
+    if (n.has(id)) n.delete(id);
+    else n.add(id);
+    return n;
+  });
 
   return (
     <div className="stack">
+      <p className="small muted" style={{ margin: 0 }}>
+        Desliga as categorias que não usas: deixam de aparecer quando categorizas, mas continuam a contar nos relatórios.
+      </p>
       <div className="seg" role="group" aria-label="Tipo de categoria">
         <button aria-pressed={type === 'out'} onClick={() => setType('out')}>
           Gastos
@@ -138,31 +141,43 @@ export function CategoriesPage() {
         </button>
       </div>
       {roots.map((r) => (
-        <section className="card" key={r.id} style={{ paddingBlock: 6 }}>
-          <button className="cat-row" onClick={() => setEdit({ cat: r })}>
+        <section className="card" key={r.id} style={{ paddingBlock: 6, opacity: r.hidden ? 0.6 : 1 }}>
+          <div className="cat-row">
             <CatIcon id={r.id} />
-            <span>
+            <button className="cat-row-main" onClick={() => setEdit({ cat: r })}>
               <b>{r.name}</b>
-              <small>
-                {r.budget ? `Orçamento ${fmt(r.budget)}/mês` : type === 'out' ? 'Sem orçamento' : 'Entrada'}
-                {r.food ? ' · comida' : ''}
-              </small>
-            </span>
-            <ChevronRight size={18} className="muted" aria-hidden />
-          </button>
-          {cx.children(r.id).map((k) => (
-            <button className="cat-row child" key={k.id} onClick={() => setEdit({ cat: k })}>
-              <CatIcon id={k.id} size="sm" />
-              <span>
-                {k.name}
-                {k.budget ? <small>Orçamento {fmt(k.budget)}/mês</small> : null}
-              </span>
-              <ChevronRight size={16} className="muted" aria-hidden />
+              <small>{r.budget ? `Orçamento ${fmt(r.budget)}/mês` : type === 'out' ? 'Sem orçamento' : 'Entrada'}</small>
             </button>
-          ))}
-          <button className="link" style={{ margin: '4px 0 6px 26px' }} onClick={() => setEdit({ parentId: r.id })}>
-            <Plus size={16} /> Subcategoria
-          </button>
+            <input type="checkbox" className="toggle" checked={!r.hidden} onChange={(e) => setHidden(r, !e.target.checked)} aria-label={`Mostrar ${r.name}`} />
+          </div>
+          <div style={{ margin: '-6px 0 4px 52px' }}>
+            {cx.children(r.id).length > 0 ? (
+              <button className="link small" onClick={() => flip(r.id)} aria-expanded={expanded.has(r.id)}>
+                {cx.children(r.id).filter((k) => !k.hidden).length} de {cx.children(r.id).length} subcategorias ativas
+                <ChevronDown size={15} style={{ transform: expanded.has(r.id) ? 'rotate(180deg)' : undefined }} />
+              </button>
+            ) : (
+              <button className="link small" onClick={() => setEdit({ parentId: r.id })}>
+                <Plus size={15} /> Subcategoria
+              </button>
+            )}
+          </div>
+          {expanded.has(r.id) &&
+            cx.children(r.id).map((k) => (
+              <div className="cat-row child" key={k.id} style={{ opacity: k.hidden ? 0.55 : 1 }}>
+                <CatIcon id={k.id} size="sm" />
+                <button className="cat-row-main" onClick={() => setEdit({ cat: k })}>
+                  {k.name}
+                  {k.budget ? <small>Orçamento {fmt(k.budget)}/mês</small> : null}
+                </button>
+                <input type="checkbox" className="toggle" checked={!k.hidden} onChange={(e) => setHidden(k, !e.target.checked)} aria-label={`Mostrar ${k.name}`} />
+              </div>
+            ))}
+          {expanded.has(r.id) && (
+            <button className="link" style={{ margin: '4px 0 6px 26px' }} onClick={() => setEdit({ parentId: r.id })}>
+              <Plus size={16} /> Subcategoria
+            </button>
+          )}
         </section>
       ))}
       <button className="btn ghost" onClick={() => setEdit({ income: type === 'in' })}>

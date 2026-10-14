@@ -5,6 +5,7 @@ import { db } from '../lib/db';
 import { accountName, indexCategories, investName, type CatIndex } from '../lib/categories';
 import type { Category, Tx } from '../lib/types';
 import type { BudgetState } from '../lib/stats';
+import { Icon } from './icons';
 import { fmt, monthLabel, pretty, today } from '../lib/text';
 
 /* ---------- categories context ---------- */
@@ -24,9 +25,13 @@ export function CatIcon({ id, size }: { id?: string; size?: 'sm' }) {
   const c = id ? cx.byId.get(id) : undefined;
   const root = cx.root(id);
   if (!c) return <span className={`cat-ico none${size ? ' sm' : ''}`} aria-hidden />;
+  return <IconTile icon={c.icon} color={colorVar(root ?? c)} size={size} />;
+}
+
+export function IconTile({ icon, color, size }: { icon: string; color: string; size?: 'sm' }) {
   return (
-    <span className={`cat-ico${size ? ' sm' : ''}`} style={{ ['--c' as string]: colorVar(root ?? c) }} aria-hidden>
-      {c.emoji}
+    <span className={`cat-ico${size ? ' sm' : ''}`} style={{ ['--c' as string]: color }} aria-hidden>
+      <Icon name={icon} size={size ? 17 : 19} />
     </span>
   );
 }
@@ -83,9 +88,7 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
   return (
     <button className="tx" onClick={onClick}>
       {isTr ? (
-        <span className="cat-ico" style={{ ['--c' as string]: 'var(--primary)' }} aria-hidden>
-          {t.invest ? '📈' : t.pot ? '🐷' : '🔁'}
-        </span>
+        <IconTile icon={t.invest ? 'trending' : t.pot ? 'piggy' : 'transfer'} color="var(--ink-2)" />
       ) : (
         <CatIcon id={t.categoryId} />
       )}

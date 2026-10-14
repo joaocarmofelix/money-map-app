@@ -1,12 +1,10 @@
-import type { Settings, Tx } from './types';
-import { INVESTMENTS, type CatIndex } from './categories';
+import type { Goal, Settings, Tx } from './types';
+import { INVESTMENTS, investName, type CatIndex } from './categories';
 import { shiftMonth } from './text';
 
 export interface MonthStats {
   spent: number;
   income: number;
-  food: number;
-  foodTxs: Tx[];
   toPots: number;
   toInvest: number;
   /** Spending per top-level category ('_none' = uncategorized) */
@@ -22,11 +20,9 @@ export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
   const byCat = new Map<string, number>();
   let spent = 0;
   let income = 0;
-  let food = 0;
   let toPots = 0;
   let toInvest = 0;
   let uncategorized = 0;
-  const foodTxs: Tx[] = [];
   for (const t of txs) {
     if (t.kind === 'transfer') {
       if (t.account === 'mil-apparte') toPots += t.amount;
@@ -51,16 +47,10 @@ export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
       byCat.set(cur.id, (byCat.get(cur.id) ?? 0) + v);
       cur = cur.parentId ? cx.byId.get(cur.parentId) : undefined;
     }
-    if (cx.isFood(t.categoryId)) {
-      food += v;
-      foodTxs.push(t);
-    }
   }
   return {
     spent,
     income,
-    food,
-    foodTxs: foodTxs.sort((a, b) => a.amount - b.amount),
     toPots,
     toInvest,
     byRoot: [...roots.entries()].map(([id, v]) => ({ id, ...v })).sort((a, b) => b.total - a.total),
@@ -70,11 +60,11 @@ export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
 }
 
 export function history(all: Tx[], endYm: string, n: number, cx: CatIndex) {
-  const out: { ym: string; spent: number; food: number; income: number; hasData: boolean }[] = [];
+  const out: { ym: string; spent: number; saved: number; income: number; hasData: boolean }[] = [];
   for (let i = n - 1; i >= 0; i--) {
     const ym = shiftMonth(endYm, -i);
     const s = monthStats(all, ym, cx);
-    out.push({ ym, spent: s.spent, food: s.food, income: s.income, hasData: all.some((t) => t.date.startsWith(ym)) });
+    out.push({ ym, spent: s.spent, saved: s.toPots + s.toInvest, income: s.income, hasData: all.some((t) => t.date.startsWith(ym)) });
   }
   return out;
 }
@@ -137,4 +127,81 @@ export function unassignedPotMoney(all: Tx[], settings: Settings): number | null
   if (!last) return null;
   const assigned = potBalances(all, settings, last.date).reduce((s, p) => s + p.balance, 0);
   return Math.round((last.balance! - assigned) * 100) / 100;
+}
+
+export interface AccountView {
+  key: string;
+  name: string;
+  icon: string;
+  color: string;
+  balance: number;
+  /** Short line under the balance */
+  sub: string;
+  group: 'bank' | 'pot' | 'invest';
+}
+
+const BANKS: Record<string, { name: string; color: string }> = {
+  mil: { name: 'Millennium', color: 'var(--s8)' },
+  bkt: { name: 'Bankinter', color: 'var(--s2)' },
+};
+const POT_COLORS = ['var(--s3)', 'var(--s7)', 'var(--s5)', 'var(--s4)', 'var(--s6)'];
+const dm = (d: string) => `${d.slice(8)}/${d.slice(5, 7)}`;
+
+/** Every account the app knows about: bank accounts, each apparte on its own, and investments. */
+export function accountList(all: Tx[], settings: Settings): AccountView[] {
+  const bal = accountBalances(all);
+  const out: AccountView[] = [];
+  for (const id of ['mil', 'bkt']) {
+    if (bal[id]) out.push({ key: id, name: BANKS[id].name, icon: 'landmark', color: BANKS[id].color, balance: bal[id].balance, sub: `Extrato de ${dm(bal[id].date)}`, group: 'bank' });
+  }
+  potBalances(all, settings).forEach((p, i) =>
+    out.push({ key: `pot:${p.pot}`, name: p.pot, icon: 'piggy', color: POT_COLORS[i % POT_COLORS.length], balance: p.balance, sub: 'Apparte Millennium', group: 'pot' }),
+  );
+  const un = unassignedPotMoney(all, settings);
+  if (un !== null && Math.abs(un) > 0.005) {
+    out.push({ key: 'pot:_unassigned', name: 'Appartes por atribuir', icon: 'piggy', color: 'var(--ink-3)', balance: un, sub: 'Indica o saldo inicial de cada apparte', group: 'pot' });
+  }
+  for (const i of investBalances(all, settings)) {
+    out.push({ key: `inv:${i.id}`, name: investName(i.id), icon: 'trending', color: 'var(--s1)', balance: i.invested, sub: 'Investido', group: 'invest' });
+  }
+  return out;
+}
+
+export const netWorth = (accounts: AccountView[]) => accounts.reduce((a, x) => a + x.balance, 0);
+
+export interface GoalProgress {
+  current: number;
+  pct: number;
+  left: number;
+  /** Per-month amount still needed to hit a dated balance goal */
+  perMonth?: number;
+  /** Consecutive finished months a monthly goal was met */
+  streak?: number;
+  done: boolean;
+}
+
+export function goalProgress(g: Goal, all: Tx[], settings: Settings, cx: CatIndex, todayIso: string): GoalProgress {
+  if (g.type === 'monthly') {
+    const ym = todayIso.slice(0, 7);
+    const s = monthStats(all, ym, cx);
+    const current = s.toPots + s.toInvest;
+    let streak = 0;
+    for (let i = 1; i <= 24; i++) {
+      const m = shiftMonth(ym, -i);
+      if (!all.some((t) => t.date.startsWith(m))) break;
+      const ms = monthStats(all, m, cx);
+      if (ms.toPots + ms.toInvest >= g.target) streak++;
+      else break;
+    }
+    return { current, pct: g.target ? current / g.target : 0, left: g.target - current, streak, done: current >= g.target };
+  }
+  const accts = accountList(all, settings);
+  const current = g.account === 'networth' || !g.account ? netWorth(accts) : (accts.find((a) => a.key === g.account)?.balance ?? 0);
+  const left = g.target - current;
+  let perMonth: number | undefined;
+  if (g.deadline && left > 0) {
+    const months = Math.max(1, (Number(g.deadline.slice(0, 4)) - Number(todayIso.slice(0, 4))) * 12 + Number(g.deadline.slice(5, 7)) - Number(todayIso.slice(5, 7)));
+    perMonth = left / months;
+  }
+  return { current, pct: g.target ? current / g.target : 0, left, perMonth, done: current >= g.target };
 }

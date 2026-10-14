@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Category, Tx } from '../lib/types';
 import { budgetStatus, history, monthStats } from '../lib/stats';
 import { db } from '../lib/db';
@@ -145,13 +145,13 @@ export function Insights({
 
         <section className="card">
           <div className="card-head">
-            <h2>Comida fora do cartão refeição</h2>
-            <StatePill state={s.food === 0 ? 'ok' : 'warn'} text={s.food === 0 ? 'Objetivo cumprido' : 'Objetivo: 0 €'} />
+            <h2>Poupança por mês</h2>
+            <span className="small muted num">{fmt(s.toPots + s.toInvest)} este mês</span>
           </div>
-          <MonthBars data={hist.map((h) => ({ ym: h.ym, value: h.food, empty: !h.hasData }))} selected={month} color="var(--s4)" onSelect={setMonth} />
-          <button className="link" onClick={() => onCategory('_food')}>
-            Ver compras de {fmt(s.food)} <ChevronRight size={16} />
-          </button>
+          <MonthBars data={hist.map((h) => ({ ym: h.ym, value: h.saved, empty: !h.hasData }))} selected={month} color="var(--s3)" onSelect={setMonth} />
+          <p className="small muted" style={{ margin: '6px 0 0' }}>
+            Transferências para os appartes e para investimentos.
+          </p>
         </section>
       </div>
       {budgetFor && (
@@ -223,7 +223,7 @@ function BudgetSheet({
             >
               {expenseRoots.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.emoji} {r.name}
+                  {r.name}
                 </option>
               ))}
             </select>

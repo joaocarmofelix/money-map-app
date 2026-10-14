@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronRight, DatabaseBackup, FileUp, Sparkles, Tags, UserCog, Trash2 } from 'lucide-react';
-import { db, exportBackup, getSettings, knownPots, restoreBackup, updateSettings } from '../lib/db';
-import { INVESTMENTS } from '../lib/categories';
+import { ChevronRight, DatabaseBackup, FileUp, Sparkles, Tags, Target, UserCog, Trash2, Wallet } from 'lucide-react';
+import { db, exportBackup, getSettings, restoreBackup, updateSettings } from '../lib/db';
 import { isOwnTransfer } from '../lib/classify';
 import type { Settings } from '../lib/types';
 import { CatIcon, toast, useCats } from './kit';
 
-export type MorePage = 'import' | 'categories' | 'setup' | 'rules' | 'backup';
+export type MorePage = 'import' | 'accounts' | 'goals' | 'categories' | 'setup' | 'rules' | 'backup';
 export const MORE_TITLES: Record<MorePage, string> = {
   import: 'Importar extratos',
+  accounts: 'Contas',
+  goals: 'Objetivos',
   categories: 'Categorias e orçamentos',
-  setup: 'Conta e saldos iniciais',
+  setup: 'Perfil e data de início',
   rules: 'Regras aprendidas',
   backup: 'Cópia de segurança',
 };
@@ -20,8 +21,10 @@ export function MoreMenu({ open }: { open: (p: MorePage) => void }) {
   const rules = useLiveQuery(() => db.rules.count(), []) ?? 0;
   const items: { id: MorePage; icon: typeof Tags; sub: string }[] = [
     { id: 'import', icon: FileUp, sub: 'PDF do Millennium, Excel do Bankinter' },
-    { id: 'categories', icon: Tags, sub: 'Subcategorias, cores e limites mensais' },
-    { id: 'setup', icon: UserCog, sub: 'Nome, data de início, Trading 212, appartes' },
+    { id: 'accounts', icon: Wallet, sub: 'Appartes, Trading 212 e o que aparece no início' },
+    { id: 'goals', icon: Target, sub: 'Juntar um valor, poupar todos os meses' },
+    { id: 'categories', icon: Tags, sub: 'Ativar, criar e definir orçamentos' },
+    { id: 'setup', icon: UserCog, sub: 'O teu nome nos bancos e quando começar a contar' },
     { id: 'rules', icon: Sparkles, sub: `${rules} ${rules === 1 ? 'regra' : 'regras'}` },
     { id: 'backup', icon: DatabaseBackup, sub: 'Guardar ou repor os teus dados' },
   ];
@@ -54,7 +57,6 @@ export function MoreMenu({ open }: { open: (p: MorePage) => void }) {
 export function SetupPage() {
   const [s, setS] = useState<Settings | null>(null);
   const [names, setNames] = useState('');
-  const pots = useLiveQuery(knownPots, []) ?? [];
   useEffect(() => {
     getSettings().then((x) => {
       setS(x);
@@ -68,11 +70,6 @@ export function SetupPage() {
     setS(next);
     return next;
   };
-  const num = (v: string) => {
-    const n = parseFloat(v.replace(',', '.'));
-    return Number.isFinite(n) ? n : undefined;
-  };
-  const startLabel = s.trackFrom ? s.trackFrom.split('-').reverse().join('/') : 'o início';
 
   async function saveNames() {
     const ownerNames = names.split(',').map((n) => n.trim().toUpperCase()).filter(Boolean);
@@ -111,43 +108,6 @@ export function SetupPage() {
         </div>
       </section>
 
-      <section className="card stack">
-        {INVESTMENTS.map((i) => (
-          <div className="field" key={i.id}>
-            <label htmlFor={`inv-${i.id}`}>
-              {i.name}: já investido antes de {startLabel}
-            </label>
-            <input id={`inv-${i.id}`} inputMode="decimal" defaultValue={s.investStart[i.id] ?? ''} placeholder="0,00" onBlur={(e) => {
-              const investStart = { ...s.investStart };
-              const n = num(e.target.value);
-              if (n === undefined) delete investStart[i.id];
-              else investStart[i.id] = n;
-              update({ investStart }).then(() => toast('Guardado'));
-            }} />
-            <span className="hint">Transferências com “Trading 212” na descrição contam como investimento, não como gasto.</span>
-          </div>
-        ))}
-      </section>
-
-      {pots.length > 0 && (
-        <section className="card stack">
-          <p className="small muted" style={{ margin: 0 }}>
-            Saldo de cada apparte em {startLabel}. O extrato só mostra o total.
-          </p>
-          {pots.map((p) => (
-            <div className="field" key={p}>
-              <label htmlFor={`pot-${p}`}>{p}</label>
-              <input id={`pot-${p}`} inputMode="decimal" defaultValue={s.potStart[p] ?? ''} placeholder="0,00" onBlur={(e) => {
-                const potStart = { ...s.potStart };
-                const n = num(e.target.value);
-                if (n === undefined) delete potStart[p];
-                else potStart[p] = n;
-                update({ potStart });
-              }} />
-            </div>
-          ))}
-        </section>
-      )}
     </div>
   );
 }
