@@ -5,8 +5,14 @@ import { parseBankinterRows } from './bankinter';
 /** Rebuilds visual text lines from a PDF using pdf.js item positions. */
 export async function pdfToLines(data: ArrayBuffer): Promise<string[]> {
   const pdfjs = await import('pdfjs-dist');
-  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  if (import.meta.env.MODE === 'artifact') {
+    // Single-file build: run the worker from a blob instead of a separate file.
+    const src = (await import('pdfjs-dist/build/pdf.worker.min.mjs?raw')).default;
+    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  } else {
+    const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  }
   const doc = await pdfjs.getDocument({ data }).promise;
   return linesFromDoc(doc);
 }

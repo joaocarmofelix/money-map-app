@@ -1,11 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 
-export default defineConfig({
+// `vite build --mode artifact` makes one self-contained HTML file (no service worker) for previewing in Claude.
+export default defineConfig(({ mode }) => ({
   // Relative base so the same build works on GitHub Pages (/moneymap/) or any host root.
   base: './',
-  plugins: [
+  build: mode === 'artifact' ? { outDir: 'dist-artifact', assetsInlineLimit: () => true } : undefined,
+  plugins: mode === 'artifact' ? [react(), viteSingleFile()] : [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -33,4 +36,4 @@ export default defineConfig({
       },
     }),
   ],
-});
+}));
