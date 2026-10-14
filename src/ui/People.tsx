@@ -5,6 +5,7 @@ import { db, getSettings, linkPerson } from '../lib/db';
 import { personFor } from '../lib/classify';
 import type { Person, Tx } from '../lib/types';
 import { fmt, norm } from '../lib/text';
+import { debtsWith } from '../lib/tags';
 import { IconTile, Sheet, toast } from './kit';
 
 const REL: Record<Person['relation'], string> = { familia: 'Família', amigos: 'Amigo', outro: 'Outro' };
@@ -60,6 +61,7 @@ export function PeoplePage({ txs }: { txs: Tx[] }) {
         <section className="card" style={{ paddingBlock: 4 }}>
           {people.map((p) => {
             const t = totals.get(p.id!);
+            const d = debtsWith(txs, p.id!);
             return (
               <button key={p.id} className="cat-row" onClick={() => setOpen(p)}>
                 <IconTile icon={p.relation === 'familia' ? 'heart' : 'handheart'} color={p.relation === 'familia' ? 'var(--s5)' : 'var(--s1)'} />
@@ -68,6 +70,11 @@ export function PeoplePage({ txs }: { txs: Tx[] }) {
                   <small className="num">
                     {REL[p.relation]} · {t ? `enviado ${fmt(t.out)} · recebido ${fmt(t.in)}` : 'sem movimentos'}
                   </small>
+                  {d.net !== 0 && (
+                    <small style={{ color: d.net > 0 ? 'var(--good)' : 'var(--warn)', fontWeight: 700 }}>
+                      {d.net > 0 ? `Deve-te ${fmt(d.net)}` : `Deves-lhe ${fmt(-d.net)}`}
+                    </small>
+                  )}
                 </span>
                 <ChevronRight size={18} className="muted" />
               </button>
@@ -165,6 +172,7 @@ function PersonSheet({ person, txs, onClose, onEdit }: { person: Person; txs: Tx
   const list = txs.filter((t) => t.personId === person.id).sort((a, b) => b.date.localeCompare(a.date));
   const out = list.filter((t) => t.amount < 0).reduce((a, t) => a - t.amount, 0);
   const inn = list.filter((t) => t.amount > 0).reduce((a, t) => a + t.amount, 0);
+  const debt = debtsWith(txs, person.id!);
   return (
     <Sheet onClose={onClose} label={person.name}>
       <div className="stack">
@@ -196,6 +204,16 @@ function PersonSheet({ person, txs, onClose, onEdit }: { person: Person; txs: Tx
             <dd className="num">{fmt(inn - out)}</dd>
           </div>
         </dl>
+        {(debt.owesYou !== 0 || debt.youOwe !== 0) && (
+          <div className={`alert ${debt.net >= 0 ? 'info' : 'warn'}`} style={{ boxShadow: 'none' }}>
+            <span className="al-t">
+              <b>{debt.net > 0 ? `${person.name} deve-te ${fmt(debt.net)}` : debt.net < 0 ? `Deves ${fmt(-debt.net)} a ${person.name}` : 'Estão quites'}</b>
+              {debt.owesYou > 0 && `Por receber: ${fmt(debt.owesYou)}. `}
+              {debt.youOwe > 0 && `Por pagar: ${fmt(debt.youOwe)}. `}
+              Marca as devoluções com a etiqueta “Acerto de contas”.
+            </span>
+          </div>
+        )}
         <p className="small muted" style={{ margin: 0 }}>
           Escreve o motivo de cada movimento; fica guardado e aparece na lista de movimentos.
         </p>

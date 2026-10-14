@@ -234,3 +234,24 @@ describe('people', () => {
     expect(plan.add.map((t) => [t.personId, t.categoryId])).toEqual([[7, 'familia'], [7, 'pessoas-in']]);
   });
 });
+
+import { computedBalance } from '../src/lib/stats';
+import { debtsWith } from '../src/lib/tags';
+describe('balance from movements', () => {
+  const t = (id: number, date: string, amount: number, balance?: number, source: Tx['source'] = 'import'): Tx => ({ id, key: String(id), account: 'mil', date, amount, balance, description: 'x', kind: amount < 0 ? 'expense' : 'income', source });
+  it('agrees with the statement when nothing is missing, and adds what you logged after', () => {
+    const v = computedBalance([t(1, '2026-10-01', -10, 90), t(2, '2026-10-05', -20, 70), t(3, '2026-10-20', -5, undefined, 'manual')], 'mil')!;
+    expect([v.opening, v.balance, v.mismatch, v.manualAfter]).toEqual([100, 65, 0, 1]);
+  });
+  it('flags a missing month', () => {
+    // October and December imported, November (−200) missing
+    const v = computedBalance([t(1, '2026-10-01', -10, 90), t(2, '2026-12-01', -10, -120)], 'mil')!;
+    expect(v.mismatch).toBe(-200);
+  });
+});
+describe('debts', () => {
+  it('nets what they owe you against repayments', () => {
+    const d = (id: number, amount: number, tag: string): Tx => ({ id, key: String(id), account: 'mil', date: '2026-10-01', amount, description: 'x', kind: amount < 0 ? 'expense' : 'income', source: 'import', personId: 1, tags: [tag] });
+    expect(debtsWith([d(1, -40, 'A receber'), d(2, 25, 'Acerto de contas'), d(3, 15, 'Devo')], 1)).toEqual({ owesYou: 15, youOwe: 15, net: 0 });
+  });
+});

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { needsCategory } from '../lib/tags';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { FileUp } from 'lucide-react';
 import { parseFile } from '../lib/parsers';
@@ -43,7 +44,7 @@ export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void })
         const plan = await runImport(f.name, parsed);
         recons.push(...plan.recon);
         const dates = parsed.txs.map((t) => t.date).sort();
-        out.push({ file: f.name, bank: parsed.bank, open: plan.add.filter((t) => !t.categoryId && t.kind !== 'transfer').length, added: plan.add.length, skipped: plan.skipped, merged: plan.merges.length, tooOld: plan.tooOld, from: dates[0], to: dates[dates.length - 1], warnings: parsed.warnings });
+        out.push({ file: f.name, bank: parsed.bank, open: plan.add.filter(needsCategory).length, added: plan.add.length, skipped: plan.skipped, merged: plan.merges.length, tooOld: plan.tooOld, from: dates[0], to: dates[dates.length - 1], warnings: parsed.warnings });
       } catch (e) {
         out.push({ file: f.name, bank: '?', added: 0, skipped: 0, merged: 0, warnings: [`Não consegui ler o ficheiro: ${(e as Error).message}`] });
       }
@@ -51,7 +52,7 @@ export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void })
     setResults(out);
     setBusy(false);
     const added = out.reduce((a, r) => a + r.added, 0);
-    const open = await db.txs.filter((t) => !t.categoryId && t.kind !== 'transfer').count();
+    const open = await db.txs.filter(needsCategory).count();
     const auto = added - out.reduce((a, r) => a + (r.open ?? 0), 0);
     const intro = added > 0 && open > 0 ? `${added} movimentos importados${auto > 0 ? `, ${auto} já categorizados ou marcados como transferência` : ''}. Falta categorizar ${open}.` : null;
     // Show the comparison first when you had logged anything by hand; then go on to categorize.
@@ -68,7 +69,7 @@ export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void })
           onClose={async () => {
             const intro = recon.intro;
             setRecon(null);
-            const open = await db.txs.filter((t) => !t.categoryId && t.kind !== 'transfer').count();
+            const open = await db.txs.filter(needsCategory).count();
             if (open > 0) onTriage(intro ?? undefined);
           }}
         />

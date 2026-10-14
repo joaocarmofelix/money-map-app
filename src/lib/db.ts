@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { needsCategory } from './tags';
 import type { Category, Goal, ImportLog, ParseResult, Person, Rule, Settings, Tx } from './types';
 import { DEFAULT_CATEGORIES, HOUSE_IDS, LEGACY_IDS } from './categories';
 import { buildDemo } from './demo';
@@ -138,7 +139,7 @@ export async function categorize(txId: number, categoryId: string, pattern: stri
     if (existing) await db.rules.update(existing.id!, { categoryId, income });
     else await db.rules.add({ pattern: p, categoryId, income, createdAt: Date.now() });
     const rules = await db.rules.toArray();
-    const open = await db.txs.filter((t) => !t.categoryId && t.kind !== 'transfer').toArray();
+    const open = await db.txs.filter(needsCategory).toArray();
     let n = 0;
     for (const t of open) {
       const r = matchRule(t.description, rules, t.kind);
@@ -236,7 +237,7 @@ export async function mergeManual(manualId: number, importedId: number) {
     const m = await db.txs.get(manualId);
     const t = await db.txs.get(importedId);
     if (!m || !t) return;
-    await db.txs.update(importedId, { categoryId: m.categoryId ?? t.categoryId, note: m.note || m.description });
+    await db.txs.update(importedId, { categoryId: m.categoryId ?? t.categoryId, note: m.note || m.description, tags: m.tags ?? t.tags, personId: m.personId ?? t.personId });
     await db.txs.delete(manualId);
   });
 }

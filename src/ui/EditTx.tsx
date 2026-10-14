@@ -8,6 +8,7 @@ import { Sparkles } from 'lucide-react';
 import { buildSuggester, type Suggestion } from '../lib/suggest';
 import { CategoryPicker } from './CategoryPicker';
 import { OwnTransferChoices } from './OwnTransfers';
+import { TxTagsEditor } from './Tags';
 import { PersonEditor, nameInTransfer } from './People';
 import { usePeople } from './kit';
 
@@ -128,6 +129,7 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
               <label htmlFor="note">{t.personId || nameInTransfer(t.description) ? 'Motivo' : 'Nota'}</label>
               <input id="note" value={note} placeholder="Ex.: jantar de anos" onChange={(e) => setNote(e.target.value)} onBlur={() => db.txs.update(t.id!, { note: note || undefined })} />
             </div>
+            <TxTagsEditor t={t} />
             <div className="row2">
               <button className="btn ghost sm" style={{ width: '100%' }} onClick={() => setKind('transfer')}>
                 Entre contas minhas

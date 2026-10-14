@@ -105,6 +105,8 @@ export function planImport(
     merges.push({ manualId: m.id!, key: tx.key });
     if (m.categoryId) tx.categoryId = m.categoryId;
     tx.note = m.note || m.description;
+    if (m.tags?.length) tx.tags = m.tags;
+    if (m.personId) tx.personId = m.personId;
   }
 
   // Per-account comparison over the period each statement covers.

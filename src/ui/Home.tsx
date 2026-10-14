@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownToLine, ArrowLeftRight, FlaskConical, ChevronRight, Flame, AlertTriangle, Tags, Target, FileWarning, Upload, Plus, SlidersHorizontal } from 'lucide-react';
+import { needsCategory } from '../lib/tags';
+import { ArrowDownToLine, ArrowLeftRight, FlaskConical, HandCoins, ChevronRight, Flame, AlertTriangle, Tags, Target, FileWarning, Upload, Plus, SlidersHorizontal } from 'lucide-react';
 import type { Goal, Settings, Tx } from '../lib/types';
 import { accountBalances, accountList, budgetStatus, monthStats, netWorth, unpairedOwnTransfers } from '../lib/stats';
 import { fmt, monthLabel, today } from '../lib/text';
-import { Bar, IconTile, TxRow, useCats } from './kit';
+import { Bar, IconTile, TxRow, useCats, usePeople } from './kit';
+import { debtsWith } from '../lib/tags';
 import { GoalEditor, GoalRow, useGoals } from './Goals';
 
 const DATE_FMT = new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const short = (d: string) => `${d.slice(8)}/${d.slice(5, 7)}`;
 
-export type HomeTarget = 'insights' | 'movements' | 'import' | 'setup' | 'accounts' | 'goals' | 'backup';
+export type HomeTarget = 'insights' | 'movements' | 'import' | 'setup' | 'accounts' | 'goals' | 'backup' | 'people';
 
 export function Home({
   txs,
@@ -36,8 +38,22 @@ export function Home({
   const goals = useGoals(txs, settings);
   const [goalEdit, setGoalEdit] = useState<Goal | 'new' | null>(null);
   const recent = useMemo(() => [...txs].sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)).slice(0, 5), [txs]);
-  const uncat = txs.filter((t) => !t.categoryId && t.kind !== 'transfer').length;
+  const uncat = txs.filter(needsCategory).length;
   const unpaired = useMemo(() => unpairedOwnTransfers(txs), [txs]);
+  const mismatched = accounts.filter((a) => a.mismatch);
+  const people = usePeople();
+  const owed = useMemo(() => {
+    let sum = 0;
+    let n = 0;
+    for (const id of people.keys()) {
+      const d = debtsWith(txs, id).net;
+      if (d > 0) {
+        sum += d;
+        n++;
+      }
+    }
+    return { sum, n };
+  }, [txs, people]);
   const first = settings.ownerNames[0]?.split(' ')[0];
   const name = first ? first[0] + first.slice(1).toLowerCase() : '';
 
@@ -148,7 +164,7 @@ export function Home({
           </button>
         </div>
 
-        {(budgetAlerts.length > 0 || uncat > 0 || stale || unpaired.length > 0) && (
+        {(budgetAlerts.length > 0 || uncat > 0 || stale || unpaired.length > 0 || mismatched.length > 0 || owed.sum > 0) && (
           <div className="stack" style={{ gap: 8 }}>
             {budgetAlerts.slice(0, 2).map(({ r, st }) => (
               <button key={r.id} className={`alert ${st.state}`} onClick={() => go('insights')}>
@@ -171,6 +187,32 @@ export function Home({
                 </span>
                 <span className="al-t">
                   <b>{uncat} movimentos por categorizar</b>Categoriza um e a app trata dos parecidos.
+                </span>
+                <ChevronRight size={18} className="muted" />
+              </button>
+            )}
+            {mismatched.map((a) => (
+              <button key={a.key} className="alert warn" onClick={() => go('import')}>
+                <span className="ic">
+                  <AlertTriangle size={18} />
+                </span>
+                <span className="al-t">
+                  <b>
+                    {a.name} não bate certo com o extrato ({fmt(a.mismatch!)})
+                  </b>
+                  Os movimentos não somam o saldo do último extrato. Pode faltar o extrato de algum mês.
+                </span>
+                <ChevronRight size={18} className="muted" />
+              </button>
+            ))}
+            {owed.sum > 0 && (
+              <button className="alert info" onClick={() => go('people')}>
+                <span className="ic">
+                  <HandCoins size={18} />
+                </span>
+                <span className="al-t">
+                  <b>Tens {fmt(owed.sum)} a receber</b>
+                  {owed.n === 1 ? 'De 1 pessoa.' : `De ${owed.n} pessoas.`}
                 </span>
                 <ChevronRight size={18} className="muted" />
               </button>

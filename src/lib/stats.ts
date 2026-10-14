@@ -1,6 +1,7 @@
 import type { Goal, Settings, Tx } from './types';
 import { INVESTMENTS, investName, type CatIndex } from './categories';
 import { shiftMonth } from './text';
+import { needsCategory } from './tags';
 
 export interface MonthStats {
   spent: number;
@@ -34,7 +35,7 @@ export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
       if (t.invest) toInvest += -t.amount;
       continue;
     }
-    if (!t.categoryId) uncategorized++;
+    if (needsCategory(t)) uncategorized++;
     if (t.kind === 'income') {
       income += t.amount;
       continue;
@@ -153,6 +154,8 @@ export interface AccountView {
   /** Short line under the balance */
   sub: string;
   group: 'bank' | 'pot' | 'invest';
+  /** Statement balance minus the balance worked out from the movements (0 when they agree) */
+  mismatch?: number;
 }
 
 const BANKS: Record<string, { name: string; color: string }> = {
@@ -164,22 +167,13 @@ const dm = (d: string) => `${d.slice(8)}/${d.slice(5, 7)}`;
 
 /** Every account the app knows about: bank accounts, each apparte on its own, and investments. */
 export function accountList(all: Tx[], settings: Settings): AccountView[] {
-  const bal = accountBalances(all);
   const out: AccountView[] = [];
   for (const id of ['mil', 'bkt']) {
-    if (!bal[id]) continue;
-    // Statement balance, plus what you logged by hand after the statement's last day.
-    const after = all.filter((t) => t.source === 'manual' && t.account === id && t.date > bal[id].date);
-    const est = Math.round((bal[id].balance + after.reduce((a, t) => a + t.amount, 0)) * 100) / 100;
-    out.push({
-      key: id,
-      name: BANKS[id].name,
-      icon: 'landmark',
-      color: BANKS[id].color,
-      balance: est,
-      sub: after.length ? `Estimado · extrato de ${dm(bal[id].date)} + ${after.length} apontados` : `Extrato de ${dm(bal[id].date)}`,
-      group: 'bank',
-    });
+    const v = computedBalance(all, id);
+    if (!v) continue;
+    const parts = [v.mismatch ? `Difere ${v.mismatch > 0 ? '+' : ''}${v.mismatch.toFixed(2).replace('.', ',')} € do extrato` : `Confere com o extrato de ${dm(v.statementDate)}`];
+    if (v.manualAfter) parts.push(`+ ${v.manualAfter} apontados`);
+    out.push({ key: id, name: BANKS[id].name, icon: 'landmark', color: BANKS[id].color, balance: v.balance, sub: parts.join(' · '), group: 'bank', mismatch: v.mismatch || undefined });
   }
   potBalances(all, settings).forEach((p, i) =>
     out.push({ key: `pot:${p.pot}`, name: p.pot, icon: 'piggy', color: POT_COLORS[i % POT_COLORS.length], balance: p.balance, sub: 'Apparte Millennium', group: 'pot' }),
@@ -272,4 +266,32 @@ export function extraordinaryTotals(all: Tx[], cx: CatIndex) {
     out.set(r, e);
   }
   return out;
+}
+
+/**
+ * An account's balance worked out from its movements: the opening balance (from the first statement line)
+ * plus every movement since, including what you logged by hand. The latest statement balance is then used
+ * as a check: if the movements up to that day don't add up to it, a statement or a movement is missing.
+ */
+export function computedBalance(all: Tx[], account: string) {
+  const mine = all.filter((t) => t.account === account);
+  const stmt = mine
+    .filter((t) => t.source === 'import' && t.balance !== undefined)
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.id ?? 0) - (b.id ?? 0));
+  if (!stmt.length) return null;
+  const first = stmt[0];
+  const last = stmt[stmt.length - 1];
+  const opening = first.balance! - first.amount;
+  const r = (n: number) => Math.round(n * 100) / 100;
+  const importedSum = stmt.reduce((a, t) => a + t.amount, 0) + mine.filter((t) => t.source === 'import' && t.balance === undefined).reduce((a, t) => a + t.amount, 0);
+  const mismatch = r(last.balance! - (opening + importedSum));
+  const manualAfter = mine.filter((t) => t.source === 'manual' && t.date > last.date).length;
+  return {
+    balance: r(opening + mine.reduce((a, t) => a + t.amount, 0)),
+    opening: r(opening),
+    statementBalance: last.balance!,
+    statementDate: last.date,
+    mismatch: Math.abs(mismatch) > 0.005 ? mismatch : 0,
+    manualAfter,
+  };
 }

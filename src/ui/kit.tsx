@@ -6,6 +6,7 @@ import { accountName, indexCategories, investName, type CatIndex } from '../lib/
 import type { Category, Person, Tx } from '../lib/types';
 import type { BudgetState } from '../lib/stats';
 import { Icon } from './icons';
+import { DEBT_TAGS } from '../lib/tags';
 import { fmt, monthLabel, pretty, today } from '../lib/text';
 
 /* ---------- categories context ---------- */
@@ -111,6 +112,15 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
           {sub} · {accountName(t.account)}
           {t.source === 'manual' && t.account !== 'cash' ? ' · à espera do extrato' : ''}
         </small>
+        {!!t.tags?.length && (
+          <span className="tx-tags">
+            {t.tags.map((x) => (
+              <span key={x} className={`tx-tag${DEBT_TAGS.includes(x) ? ' debt' : ''}`}>
+                {x}
+              </span>
+            ))}
+          </span>
+        )}
       </span>
       <span className={`a num${isTr ? ' tr' : t.amount > 0 ? ' in' : ''}`}>
         {t.amount > 0 ? '+' : ''}

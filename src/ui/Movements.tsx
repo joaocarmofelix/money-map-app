@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { needsCategory } from '../lib/tags';
 import { Search, X } from 'lucide-react';
 import type { Tx } from '../lib/types';
 import { fmt } from '../lib/text';
@@ -36,6 +37,8 @@ export function Movements({
 }) {
   const cx = useCats();
   const [q, setQ] = useState('');
+  const [tag, setTag] = useState<string | null>(null);
+  const tags = useMemo(() => [...new Set(txs.flatMap((t) => t.tags ?? []))].sort(), [txs]);
   const inCat = (t: Tx) => {
     if (!cat) return true;
     let cur = t.categoryId ? cx.byId.get(t.categoryId) : undefined;
@@ -49,18 +52,19 @@ export function Movements({
     const list = txs
       .filter((t) => t.date.startsWith(month))
       .filter((t) => {
-        if (filter === 'uncat') return !t.categoryId && t.kind !== 'transfer';
+        if (filter === 'uncat') return needsCategory(t);
         if (filter === 'all') return true;
         return t.kind === filter;
       })
       .filter(inCat)
+      .filter((t) => !tag || t.tags?.includes(tag))
       .filter((t) => !q || `${t.description} ${t.note ?? ''}`.toLowerCase().includes(q.toLowerCase()))
       .sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0));
     const m = new Map<string, Tx[]>();
     for (const t of list) m.set(t.date, [...(m.get(t.date) ?? []), t]);
     return [...m.entries()];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txs, month, filter, q, cat, cx]);
+  }, [txs, month, filter, q, cat, cx, tag]);
   const sum = days.flatMap(([, l]) => l).filter((t) => t.kind !== 'transfer').reduce((a, t) => a + t.amount, 0);
   const catName = cat ? cx.label(cat) : '';
 
@@ -87,6 +91,15 @@ export function Movements({
             </button>
           ))}
         </div>
+        {tags.length > 0 && (
+          <div className="chips" role="toolbar" aria-label="Filtrar por etiqueta">
+            {tags.map((x) => (
+              <button key={x} className="chip" aria-pressed={tag === x} onClick={() => setTag(tag === x ? null : x)}>
+                # {x}
+              </button>
+            ))}
+          </div>
+        )}
         {days.length > 0 && (
           <p className="small muted" style={{ margin: 0 }}>
             {days.reduce((a, [, l]) => a + l.length, 0)} movimentos · <span className="num">{fmt(sum)}</span>

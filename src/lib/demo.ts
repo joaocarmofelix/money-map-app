@@ -26,6 +26,7 @@ interface Ev {
   invest?: string;
   personId?: number;
   note?: string;
+  tags?: string[];
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -102,9 +103,13 @@ export function buildDemo(todayIso: string) {
     if (r() > 0.5) add({ account: 'mil', date: `${m}-${pad(1 + Math.floor(r() * days))}`, amount: -amt(8, 30), description: 'TRF MB WAY P/ RICARDO AMIGO CS', categoryId: 'amigos' });
     // Family: a sister who sometimes sends money back, sometimes gets some
     if (mi % 2 === 0 && d(16) >= 16) add({ account: 'mil', date: `${m}-16`, amount: -amt(15, 40), description: 'TRF MB WAY P/ MARIA EXEMPLO CS', categoryId: 'familia', personId: 1, note: pick(['Metade das compras para casa', 'Prenda da mãe (metade)', 'Bilhetes do concerto']) });
-    if (mi % 3 === 1 && d(20) >= 20) add({ account: 'mil', date: `${m}-20`, amount: amt(20, 60), description: 'TRF. P/O MARIA EXEMPLO', categoryId: 'pessoas-in', personId: 1, note: 'Devolveu o que lhe emprestei' });
+    if (mi % 3 === 1 && d(20) >= 20) add({ account: 'mil', date: `${m}-20`, amount: 30, description: 'TRF. P/O MARIA EXEMPLO', tags: ['Acerto de contas'], categoryId: 'pessoas-in', personId: 1, note: 'Devolveu metade dos bilhetes' });
   });
 
+  // Bought concert tickets for both; Maria pays her half back over time
+  add({ account: 'mil', date: `${months[1]}-12`, amount: -90, description: 'COMPRA 7782 TICKETLINE LISBOA', tags: ['A receber'], categoryId: 'eventos', personId: 1, note: 'Bilhetes do concerto para a Maria' });
+  add({ account: 'mil', date: `${months[3]}-08`, amount: -24, description: 'COMPRA 7782 FNAC ALMADA', tags: ['Viagem Porto'], categoryId: 'livros', note: 'Guia para a viagem' });
+  add({ account: 'mil', date: `${months[3]}-22`, amount: -86.4, description: 'COMPRA 7782 CP COMBOIOS DE PORTUGAL', tags: ['Viagem Porto'], categoryId: 'transp' });
   // A transfer to an old Caixa account (no other side), to show the "sem par" alert
   add({ account: 'mil', date: `${months[2]}-21`, amount: -120, description: `TRF P/ ${OWNER}`, kind: 'transfer' });
   // Buying a house: deposit and mortgage-process fees from Bankinter
@@ -142,6 +147,7 @@ export function buildDemo(todayIso: string) {
       invest: e.invest,
       personId: e.personId,
       note: e.note,
+      tags: e.tags,
       source: 'import' as const,
     };
   });

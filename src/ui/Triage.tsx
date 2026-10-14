@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { needsCategory } from '../lib/tags';
 import { CheckCircle2, Clock } from 'lucide-react';
 import type { Tx } from '../lib/types';
 import { accountName } from '../lib/categories';
@@ -12,7 +13,7 @@ import { CategorizeBlock } from './EditTx';
  * so one decision clears many. "Decidir depois" leaves a movement for later.
  */
 export function Triage({ txs, intro, onClose, onShowLater }: { txs: Tx[]; intro?: string; onClose: () => void; onShowLater: () => void }) {
-  const open = useMemo(() => txs.filter((t) => !t.categoryId && t.kind !== 'transfer'), [txs]);
+  const open = useMemo(() => txs.filter(needsCategory), [txs]);
   const suggest = useMemo(() => buildSuggester(txs), [txs]);
   const [later, setLater] = useState<Set<number>>(new Set());
   const [total] = useState(open.length);

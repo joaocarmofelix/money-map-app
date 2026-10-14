@@ -41,6 +41,8 @@ export interface Tx {
   pot?: string;
   /** Investment account this transfer feeds (e.g. 't212') */
   invest?: string;
+  /** Free labels, plus the debt ones: A receber, Devo, Acerto de contas */
+  tags?: string[];
   /** Person this transfer went to or came from */
   personId?: number;
   /** Cash withdrawal (ATM): money moved to the Dinheiro account */

@@ -4,6 +4,8 @@ import { ACCOUNTS } from '../lib/categories';
 import { today } from '../lib/text';
 import { Sheet, toast } from './kit';
 import { CategoryPicker } from './CategoryPicker';
+import { TagsBlock } from './Tags';
+import { DEBT_TAGS } from '../lib/tags';
 
 const LAST_ACC = 'moneymap:lastAccount';
 function lastAccount() {
@@ -21,11 +23,15 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
   const [account, setAccount] = useState(lastAccount);
   const [date, setDate] = useState(today());
   const [income, setIncome] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [personId, setPersonId] = useState<number>();
+  const debt = tags.some((t) => DEBT_TAGS.includes(t));
 
   const value = parseFloat(amount.replace(',', '.'));
   const ok = Number.isFinite(value) && value > 0 && !!cat;
 
   async function save() {
+    if (!ok) return;
     if (!ok) return;
     await db.txs.add({
       key: `manual|${crypto.randomUUID()}`,
@@ -35,6 +41,8 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
       description: desc.trim() || (income ? 'Entrada' : 'Gasto'),
       kind: income ? 'income' : 'expense',
       categoryId: cat,
+      tags: tags.length ? tags : undefined,
+      personId,
       source: 'manual',
     });
     try {
@@ -71,6 +79,14 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
           <input placeholder="Descrição (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Descrição" />
         </div>
         <CategoryPicker value={cat} onPick={setCat} income={income} />
+        <details className="card" style={{ padding: 12 }} open={debt}>
+          <summary className="small" style={{ fontWeight: 700, cursor: 'pointer' }}>
+            Etiquetas e dívidas
+          </summary>
+          <div style={{ marginTop: 10 }}>
+            <TagsBlock value={tags} personId={personId} amount={income ? 1 : -1} onChange={(t, p) => (setTags(t), setPersonId(p))} />
+          </div>
+        </details>
         <div className="row2">
           <div className="field">
             <label htmlFor="acc">{income ? 'Conta' : 'Pago com'}</label>
