@@ -97,7 +97,9 @@ export function budgetStatus(spent: number, budget: number, ym: string, todayIso
   const projected = current && elapsed > 0 ? spent / elapsed : spent;
   let state: BudgetState = 'ok';
   if (spent > budget) state = 'over';
-  else if (pct >= 0.85 || (current && elapsed >= 0.25 && projected > budget * 1.05)) state = 'warn';
+  // Near the limit, or clearly ahead of the month's pace. The margin keeps bills paid early in the
+  // month (rent, internet, subscriptions) from raising a false alarm.
+  else if (pct >= 0.85 || (current && pct >= 0.5 && pct > elapsed + 0.3)) state = 'warn';
   return { pct, state, projected, elapsed, left: budget - spent };
 }
 

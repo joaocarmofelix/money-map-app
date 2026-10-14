@@ -79,6 +79,10 @@ export interface Settings {
   investStart: Record<string, number>;
   /** Account keys hidden from the home screen (mil, bkt, pot:<name>, inv:<id>) */
   hiddenAccounts: string[];
+  /** The data is the built-in example set */
+  demo?: boolean;
+  /** You cleared the example data; don't load it again automatically */
+  demoDismissed?: boolean;
 }
 
 export interface Goal {

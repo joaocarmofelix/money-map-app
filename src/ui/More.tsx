@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronRight, DatabaseBackup, FileUp, Sparkles, Tags, Target, UserCog, Trash2, Wallet } from 'lucide-react';
-import { db, exportBackup, getSettings, restoreBackup, updateSettings } from '../lib/db';
+import { clearAll, db, exportBackup, getSettings, loadDemo, restoreBackup, updateSettings } from '../lib/db';
+import { today } from '../lib/text';
 import { isOwnTransfer } from '../lib/classify';
 import type { Settings } from '../lib/types';
 import { CatIcon, toast, useCats } from './kit';
@@ -14,7 +15,7 @@ export const MORE_TITLES: Record<MorePage, string> = {
   categories: 'Categorias e orçamentos',
   setup: 'Perfil e data de início',
   rules: 'Regras aprendidas',
-  backup: 'Cópia de segurança',
+  backup: 'Dados e cópias',
 };
 
 export function MoreMenu({ open }: { open: (p: MorePage) => void }) {
@@ -26,7 +27,7 @@ export function MoreMenu({ open }: { open: (p: MorePage) => void }) {
     { id: 'categories', icon: Tags, sub: 'Ativar, criar e definir orçamentos' },
     { id: 'setup', icon: UserCog, sub: 'O teu nome nos bancos e quando começar a contar' },
     { id: 'rules', icon: Sparkles, sub: `${rules} ${rules === 1 ? 'regra' : 'regras'}` },
-    { id: 'backup', icon: DatabaseBackup, sub: 'Guardar ou repor os teus dados' },
+    { id: 'backup', icon: DatabaseBackup, sub: 'Cópia de segurança, dados de exemplo, apagar tudo' },
   ];
   return (
     <>
@@ -155,10 +156,19 @@ export function BackupPage() {
       toast((e as Error).message);
     }
   }
+  const [confirm, setConfirm] = useState<'demo' | 'clear' | null>(null);
+  async function run(what: 'demo' | 'clear') {
+    if (what === 'demo') await loadDemo(today());
+    else await clearAll();
+    toast(what === 'demo' ? 'Dados de exemplo carregados' : 'Dados apagados');
+    setTimeout(() => location.reload(), 500);
+  }
   return (
+    <div className="stack">
     <section className="card stack">
+      <b>Cópia de segurança</b>
       <p className="muted" style={{ margin: 0 }}>
-        Os dados ficam só neste telemóvel. Guarda uma cópia de vez em quando, por exemplo no Google Drive.
+        Os dados ficam só neste dispositivo. Guarda uma cópia de vez em quando, por exemplo no Google Drive. A cópia leva tudo: movimentos, categorias, regras, orçamentos, objetivos e definições.
       </p>
       <button className="btn" onClick={backup}>
         Guardar cópia
@@ -168,5 +178,26 @@ export function BackupPage() {
         <input type="file" accept="application/json,.json" hidden onChange={(e) => restore(e.target.files?.[0])} />
       </label>
     </section>
+    <section className="card stack">
+      <b>Experimentar a app</b>
+      <p className="muted" style={{ margin: 0 }}>
+        Seis meses de movimentos inventados, com appartes, Trading 212, orçamentos e objetivos. Substitui tudo o que tens agora.
+      </p>
+      {confirm === 'demo' ? (
+        <button className="btn" onClick={() => run('demo')}>Confirmar: substituir pelos dados de exemplo</button>
+      ) : (
+        <button className="btn ghost" onClick={() => setConfirm('demo')}>Carregar dados de exemplo</button>
+      )}
+    </section>
+    <section className="card stack">
+      <b>Começar do zero</b>
+      <p className="muted" style={{ margin: 0 }}>Apaga movimentos, regras, objetivos e categorias personalizadas. Não dá para desfazer sem uma cópia.</p>
+      {confirm === 'clear' ? (
+        <button className="btn danger" onClick={() => run('clear')}>Confirmar: apagar tudo</button>
+      ) : (
+        <button className="btn danger" onClick={() => setConfirm('clear')}>Apagar todos os dados</button>
+      )}
+    </section>
+    </div>
   );
 }

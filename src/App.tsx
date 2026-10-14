@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, Home as HomeIcon, List, Menu, PieChart, Plus } from 'lucide-react';
-import { db, getSettings } from './lib/db';
+import { db, getSettings, loadDemo } from './lib/db';
 import { shiftMonth, today } from './lib/text';
 import type { Tx } from './lib/types';
 import { CatsProvider, Toaster } from './ui/kit';
@@ -50,6 +50,19 @@ function Shell() {
     if (params.toString()) history.replaceState(null, '', location.pathname);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The preview inside Claude starts with example data so there is something to look at.
+  const seeding = useRef(false);
+  useEffect(() => {
+    if (import.meta.env.MODE !== 'artifact' || !txs || txs.length > 0 || seeding.current) return;
+    seeding.current = true;
+    // Check the stored state directly: the two live queries can update a moment apart.
+    (async () => {
+      const s = await getSettings();
+      if (!s.demoDismissed && (await db.txs.count()) === 0) await loadDemo(today());
+      seeding.current = false;
+    })();
+  }, [txs]);
 
   // Follow the latest month with data until you pick a month yourself.
   useEffect(() => {

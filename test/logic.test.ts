@@ -120,8 +120,10 @@ describe('categories and budgets', () => {
     expect(budgetStatus(120, 100, '2026-09', '2026-10-14').state).toBe('over');
     expect(budgetStatus(90, 100, '2026-09', '2026-10-14').state).toBe('warn');
     expect(budgetStatus(40, 100, '2026-09', '2026-10-14').state).toBe('ok');
-    // 60 € by the 10th of a 31-day month projects ~186 €
-    expect(budgetStatus(60, 100, '2026-10', '2026-10-10').state).toBe('warn');
+    // 75 € by the 10th of a 31-day month is well ahead of pace
+    expect(budgetStatus(75, 100, '2026-10', '2026-10-10').state).toBe('warn');
+    // a bill paid early in the month is not
+    expect(budgetStatus(45, 100, '2026-10', '2026-10-10').state).toBe('ok');
   });
 });
 
@@ -159,5 +161,22 @@ describe('extraordinary spending', () => {
     expect(s.spent).toBe(40);
     expect(s.extra).toBe(5000);
     expect(s.byCat.get('casa-compra')).toBeUndefined();
+  });
+});
+
+import { buildDemo } from '../src/lib/demo';
+import { accountList, unpairedOwnTransfers as unp } from '../src/lib/stats';
+describe('demo data', () => {
+  it('is consistent', () => {
+    const d = buildDemo('2026-10-14');
+    expect(d.txs.length).toBeGreaterThan(150);
+    expect(new Set(d.txs.map((t) => t.key)).size).toBe(d.txs.length);
+    const acc = accountList(d.txs.map((t, i) => ({ ...t, id: i + 1 })), d.settings);
+    expect(acc.find((a) => a.key === 'pot:_unassigned')).toBeUndefined();
+    expect(acc.every((a) => a.balance > 0)).toBe(true);
+    expect(unp(d.txs.map((t, i) => ({ ...t, id: i + 1 }))).length).toBe(1);
+    const cx = indexCategories(DEFAULT_CATEGORIES);
+    expect(d.txs.every((t) => !t.categoryId || cx.byId.has(t.categoryId))).toBe(true);
+    console.log(acc.map((a) => `${a.name} ${a.balance}`).join(' | '));
   });
 });

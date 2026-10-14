@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Category, Goal, ImportLog, ParseResult, Rule, Settings, Tx } from './types';
 import { DEFAULT_CATEGORIES, HOUSE_IDS, LEGACY_IDS } from './categories';
+import { buildDemo } from './demo';
 import { planImport } from './importer';
 import { norm } from './text';
 import { matchRule } from './classify';
@@ -191,5 +192,28 @@ export async function deleteCategory(id: string) {
     }
     await db.categories.where('parentId').equals(id).modify({ parentId: to });
     await db.categories.delete(id);
+  });
+}
+
+/** Replace everything with the example data set. */
+export async function loadDemo(todayIso: string) {
+  const d = buildDemo(todayIso);
+  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals], async () => {
+    await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear(), db.goals.clear(), db.categories.clear()]);
+    await db.categories.bulkAdd(DEFAULT_CATEGORIES.map((c) => ({ ...c, budget: d.budgets[c.id] })));
+    await db.txs.bulkAdd(d.txs);
+    await db.rules.bulkAdd(d.rules);
+    await db.goals.bulkAdd(d.goals);
+    await db.kv.put({ k: 'settings', v: d.settings });
+  });
+}
+
+/** Delete all data and start over with the default categories. */
+export async function clearAll(keepDismissed = true) {
+  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals], async () => {
+    await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear(), db.goals.clear(), db.categories.clear()]);
+    await db.categories.bulkAdd(DEFAULT_CATEGORIES);
+    await db.rules.add({ pattern: 'PHB', categoryId: 'cc-credito', createdAt: Date.now() });
+    await db.kv.put({ k: 'settings', v: { ...DEFAULT_SETTINGS, demoDismissed: keepDismissed } });
   });
 }

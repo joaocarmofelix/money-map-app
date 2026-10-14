@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownToLine, ArrowLeftRight, ChevronRight, Flame, AlertTriangle, Tags, Target, FileWarning, Upload, Plus, SlidersHorizontal } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeftRight, FlaskConical, ChevronRight, Flame, AlertTriangle, Tags, Target, FileWarning, Upload, Plus, SlidersHorizontal } from 'lucide-react';
 import type { Goal, Settings, Tx } from '../lib/types';
 import { accountBalances, accountList, budgetStatus, monthStats, netWorth, unpairedOwnTransfers } from '../lib/stats';
 import { fmt, monthLabel, today } from '../lib/text';
@@ -10,7 +10,7 @@ const DATE_FMT = new Intl.DateTimeFormat('pt-PT', { weekday: 'long', day: 'numer
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const short = (d: string) => `${d.slice(8)}/${d.slice(5, 7)}`;
 
-export type HomeTarget = 'insights' | 'movements' | 'import' | 'setup' | 'accounts' | 'goals';
+export type HomeTarget = 'insights' | 'movements' | 'import' | 'setup' | 'accounts' | 'goals' | 'backup';
 
 export function Home({
   txs,
@@ -78,6 +78,9 @@ export function Home({
             <button className="btn" onClick={() => go('import')}>
               Importar extrato
             </button>
+            <button className="link" style={{ display: 'block', margin: '10px auto 0' }} onClick={() => go('backup')}>
+              Ou experimentar com dados de exemplo
+            </button>
           </section>
           {settings.ownerNames.length === 0 && (
             <button className="alert info" onClick={() => go('setup')}>
@@ -99,6 +102,17 @@ export function Home({
     <>
       {header}
       <div className="stack">
+        {settings.demo && (
+          <button className="alert info" onClick={() => go('backup')}>
+            <span className="ic">
+              <FlaskConical size={18} />
+            </span>
+            <span className="al-t">
+              <b>Estás a ver dados de exemplo</b>Nada disto é real. Apaga-os em Mais › Dados e cópias quando quiseres começar.
+            </span>
+            <ChevronRight size={18} className="muted" />
+          </button>
+        )}
         <section className="hero" aria-label="Património total">
           <div className="label">Património total</div>
           <div className="big num">{fmt(total)}</div>
