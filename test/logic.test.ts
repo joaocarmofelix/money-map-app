@@ -150,3 +150,14 @@ describe('own transfers', () => {
     expect(unpairedOwnTransfers(list).map((t) => t.id)).toEqual([3]);
   });
 });
+
+describe('extraordinary spending', () => {
+  it('keeps house purchase costs out of monthly spending', () => {
+    const cx = indexCategories(DEFAULT_CATEGORIES);
+    const t = (categoryId: string, amount: number): Tx => ({ key: categoryId, account: 'mil', date: '2026-10-05', amount, description: 'x', kind: 'expense', categoryId, source: 'import' });
+    const s = monthStats([t('cc-sinal', -5000), t('super', -40)], '2026-10', cx);
+    expect(s.spent).toBe(40);
+    expect(s.extra).toBe(5000);
+    expect(s.byCat.get('casa-compra')).toBeUndefined();
+  });
+});

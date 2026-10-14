@@ -12,6 +12,9 @@ export interface MonthStats {
   /** Spending per category id, including what its subcategories spent */
   byCat: Map<string, number>;
   uncategorized: number;
+  /** One-off spending (e.g. house purchase), kept out of spent/byRoot/byCat */
+  extra: number;
+  extraByRoot: { id: string; total: number }[];
 }
 
 export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
@@ -23,6 +26,8 @@ export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
   let toPots = 0;
   let toInvest = 0;
   let uncategorized = 0;
+  let extra = 0;
+  const extraRoots = new Map<string, number>();
   for (const t of txs) {
     if (t.kind === 'transfer') {
       if (t.account === 'mil-apparte') toPots += t.amount;
@@ -35,6 +40,12 @@ export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
       continue;
     }
     const v = -t.amount;
+    if (cx.isExtra(t.categoryId)) {
+      extra += v;
+      const r = cx.root(t.categoryId)!.id;
+      extraRoots.set(r, (extraRoots.get(r) ?? 0) + v);
+      continue;
+    }
     spent += v;
     const root = cx.root(t.categoryId)?.id ?? '_none';
     const e = roots.get(root) ?? { total: 0, count: 0 };
@@ -56,6 +67,8 @@ export function monthStats(all: Tx[], ym: string, cx: CatIndex): MonthStats {
     byRoot: [...roots.entries()].map(([id, v]) => ({ id, ...v })).sort((a, b) => b.total - a.total),
     byCat,
     uncategorized,
+    extra,
+    extraByRoot: [...extraRoots.entries()].map(([id, total]) => ({ id, total })),
   };
 }
 
@@ -223,6 +236,20 @@ export function unpairedOwnTransfers(all: Tx[]): Tx[] {
       used.add(t.id!);
       used.add(m.id!);
     } else if (!t.confirmed) out.push(t);
+  }
+  return out;
+}
+
+/** All-time one-off spending per extraordinary category, with its subcategories. */
+export function extraordinaryTotals(all: Tx[], cx: CatIndex) {
+  const out = new Map<string, { total: number; byCat: Map<string, number> }>();
+  for (const t of all) {
+    if (t.kind !== 'expense' || !cx.isExtra(t.categoryId)) continue;
+    const r = cx.root(t.categoryId)!.id;
+    const e = out.get(r) ?? { total: 0, byCat: new Map<string, number>() };
+    e.total += -t.amount;
+    e.byCat.set(t.categoryId!, (e.byCat.get(t.categoryId!) ?? 0) + -t.amount);
+    out.set(r, e);
   }
   return out;
 }

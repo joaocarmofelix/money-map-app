@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { Category, Goal, ImportLog, ParseResult, Rule, Settings, Tx } from './types';
-import { DEFAULT_CATEGORIES, LEGACY_IDS } from './categories';
+import { DEFAULT_CATEGORIES, HOUSE_IDS, LEGACY_IDS } from './categories';
 import { planImport } from './importer';
 import { norm } from './text';
 import { matchRule } from './classify';
@@ -46,7 +46,20 @@ class MoneyMapDB extends Dexie {
       const have = new Set(((await tx.table('categories').toCollection().primaryKeys()) as string[]));
       await tx.table('categories').bulkAdd(DEFAULT_CATEGORIES.filter((c) => ['eu', 'familia', 'amigos', 'eu-in'].includes(c.id) && !have.has(c.id)));
     });
+    // v5: house purchase categories (one-off spending) and a rule for Bankinter mortgage-process fees.
+    this.version(5).upgrade(async (tx) => {
+      const have = new Set((await tx.table('categories').toCollection().primaryKeys()) as string[]);
+      await tx.table('categories').bulkAdd(DEFAULT_CATEGORIES.filter((c) => HOUSE_IDS.includes(c.id) && !have.has(c.id)));
+      if (!(await tx.table('rules').where('pattern').equals('PHB').count())) {
+        await tx.table('rules').add({ pattern: 'PHB', categoryId: 'cc-credito', createdAt: Date.now() });
+      }
+      await tx
+        .table('txs')
+        .filter((t: Tx) => !t.categoryId && t.kind === 'expense' && /\bPHB\b/i.test(t.description))
+        .modify({ categoryId: 'cc-credito' });
+    });
     this.on('populate', (tx) => {
+      tx.table('rules').add({ pattern: 'PHB', categoryId: 'cc-credito', createdAt: Date.now() });
       tx.table('categories').bulkAdd(DEFAULT_CATEGORIES);
     });
   }

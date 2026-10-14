@@ -95,6 +95,18 @@ export const DEFAULT_CATEGORIES: Category[] = [
   c('taxas', 'Impostos e taxas', 'landmark', 7),
   sub('taxas', 'comissoes', 'Comissões bancárias', 'creditcard'),
   sub('taxas', 'impostos', 'Impostos', 'receipt'),
+  c('casa-compra', 'Compra de casa', 'building', 0, { extraordinary: true }),
+  sub('casa-compra', 'cc-sinal', 'Sinal e CPCV', 'handcoins'),
+  sub('casa-compra', 'cc-escritura', 'Escritura', 'receipt'),
+  sub('casa-compra', 'cc-imt', 'IMT', 'landmark'),
+  sub('casa-compra', 'cc-selo', 'Imposto do Selo', 'landmark'),
+  sub('casa-compra', 'cc-registos', 'Registos e certidões', 'receipt'),
+  sub('casa-compra', 'cc-credito', 'Comissões do crédito', 'percent'),
+  sub('casa-compra', 'cc-avaliacao', 'Avaliação do imóvel', 'home'),
+  sub('casa-compra', 'cc-seguros', 'Seguros do crédito', 'shield'),
+  sub('casa-compra', 'cc-solicitador', 'Solicitador ou advogado', 'briefcase'),
+  sub('casa-compra', 'cc-mediacao', 'Mediação imobiliária', 'store'),
+  sub('casa-compra', 'cc-mudanca', 'Mudança', 'package'),
   c('educacao', 'Educação', 'graduation', 0, off),
   c('animais', 'Animais', 'paw', 2, off),
   c('doacoes', 'Doações', 'heart', 5, off),
@@ -112,6 +124,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 /** Old ids that changed meaning, mapped to their new home. */
+export const HOUSE_IDS = ['casa-compra', 'cc-sinal', 'cc-escritura', 'cc-imt', 'cc-selo', 'cc-registos', 'cc-credito', 'cc-avaliacao', 'cc-seguros', 'cc-solicitador', 'cc-mediacao', 'cc-mudanca'];
+
 export const LEGACY_IDS: Record<string, string> = { alimentacao: 'comerfora', contas: 'seguros' };
 
 
@@ -122,6 +136,7 @@ export interface CatIndex {
   children: (id: string) => Category[];
   root: (id?: string) => Category | undefined;
   isIncome: (id?: string) => boolean;
+  isExtra: (id?: string) => boolean;
   label: (id?: string) => string;
 }
 
@@ -139,6 +154,7 @@ export function indexCategories(list: Category[]): CatIndex {
     roots: sorted.filter((x) => !x.parentId || !byId.has(x.parentId)),
     children: (id) => sorted.filter((x) => x.parentId === id),
     root,
+    isExtra: (id) => !!(id && (byId.get(id)?.extraordinary || root(id)?.extraordinary)),
     isIncome: (id) => !!(id && (byId.get(id)?.income || root(id)?.income)),
     label: (id) => {
       const x = id ? byId.get(id) : undefined;

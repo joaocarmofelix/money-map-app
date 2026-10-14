@@ -21,6 +21,8 @@ export interface Category {
   hidden?: boolean;
   /** Monthly spending limit in euros */
   budget?: number;
+  /** One-off spending (e.g. buying a house): shown apart, left out of monthly totals and budgets */
+  extraordinary?: boolean;
   order: number;
 }
 

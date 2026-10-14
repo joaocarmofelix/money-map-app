@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Category, Tx } from '../lib/types';
-import { budgetStatus, history, monthStats } from '../lib/stats';
+import { budgetStatus, extraordinaryTotals, history, monthStats } from '../lib/stats';
 import { db } from '../lib/db';
 import { fmt, today } from '../lib/text';
 import { Bar, CatIcon, MonthPicker, Sheet, StatePill, colorVar, toast, useCats } from './kit';
@@ -24,6 +24,7 @@ export function Insights({
   const s = useMemo(() => monthStats(txs, month, cx), [txs, month, cx]);
   const hist = useMemo(() => history(txs, month, 6, cx), [txs, month, cx]);
   const [budgetFor, setBudgetFor] = useState<Category | null>(null);
+  const extras = useMemo(() => [...extraordinaryTotals(txs, cx).entries()], [txs, cx]);
 
   const slices: Slice[] = useMemo(() => {
     const named = s.byRoot.filter((r) => r.id !== '_none');
@@ -39,7 +40,7 @@ export function Insights({
     return out;
   }, [s, cx]);
 
-  const roots = cx.roots.filter((r) => !r.income);
+  const roots = cx.roots.filter((r) => !r.income && !r.extraordinary);
   const budgetTotal = roots.reduce((a, r) => a + (r.budget ?? 0), 0);
   const now = today();
   const rows = roots
@@ -153,6 +154,39 @@ export function Insights({
             Transferências para os appartes e para investimentos.
           </p>
         </section>
+
+        {extras.map(([id, e]) => {
+          const r = cx.byId.get(id)!;
+          const thisMonth = s.extraByRoot.find((x) => x.id === id)?.total ?? 0;
+          return (
+            <section className="card" key={id}>
+              <div className="card-head">
+                <h2>{r.name}</h2>
+                <span className="pill info">Extraordinária</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                <b className="num" style={{ fontSize: 24, letterSpacing: '-0.02em' }}>
+                  {fmt(e.total)}
+                </b>
+                <span className="small muted num">{thisMonth > 0 ? `${fmt(thisMonth)} neste mês` : 'no total'}</span>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                {[...e.byCat.entries()]
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([cid, v]) => (
+                    <button key={cid} className="cat-row" onClick={() => onCategory(cid)}>
+                      <CatIcon id={cid} size="sm" />
+                      <span>{cx.byId.get(cid)?.name}</span>
+                      <span className="num">{fmt(v)}</span>
+                    </button>
+                  ))}
+              </div>
+              <p className="small muted" style={{ margin: '6px 0 0' }}>
+                Fica fora dos gastos do mês e dos orçamentos.
+              </p>
+            </section>
+          );
+        })}
       </div>
       {budgetFor && (
         <BudgetSheet
@@ -190,7 +224,7 @@ function BudgetSheet({
   const kids = cx.children(c.id);
   const spent = spentBy.get(c.id) ?? 0;
   const st = c.budget ? budgetStatus(spent, c.budget, month, today()) : null;
-  const expenseRoots = cx.roots.filter((r) => !r.income);
+  const expenseRoots = cx.roots.filter((r) => !r.income && !r.extraordinary);
 
   async function save() {
     const n = parseFloat(val.replace(',', '.'));

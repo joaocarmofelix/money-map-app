@@ -44,7 +44,7 @@ export function Home({
   const total = netWorth(accounts);
   const sum = (g: string) => accounts.filter((a) => a.group === g).reduce((x, a) => x + a.balance, 0);
 
-  const budgetTotal = cx.roots.filter((r) => !r.income).reduce((a, r) => a + (r.budget ?? 0), 0);
+  const budgetTotal = cx.roots.filter((r) => !r.income && !r.extraordinary).reduce((a, r) => a + (r.budget ?? 0), 0);
   const budgetAlerts = cx.roots
     .filter((r) => r.budget)
     .map((r) => ({ r, st: budgetStatus(s.byCat.get(r.id) ?? 0, r.budget!, month, today()) }))
@@ -227,6 +227,11 @@ export function Home({
               <dd className="num">{fmt(s.toPots + s.toInvest)}</dd>
             </div>
           </dl>
+          {s.extra > 0 && (
+            <p className="small muted" style={{ margin: '10px 0 0' }}>
+              Mais <b className="num">{fmt(s.extra)}</b> em despesas extraordinárias ({s.extraByRoot.map((x) => cx.byId.get(x.id)?.name).join(', ')}).
+            </p>
+          )}
         </section>
 
         <section className="card" style={{ paddingBottom: goals.length ? 6 : 16 }}>

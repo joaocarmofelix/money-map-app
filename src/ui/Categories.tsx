@@ -17,6 +17,7 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
   const [parent, setParent] = useState(parent0 ?? '');
   const [budget, setBudget] = useState(cat?.budget !== undefined ? String(cat.budget) : '');
   const [confirmDel, setConfirmDel] = useState(false);
+  const [extra, setExtra] = useState(!!cat?.extraordinary);
   const isIncome = cat?.income ?? (parent0 ? cx.byId.get(parent0)?.income : income) ?? false;
   const hasKids = cat ? cx.children(cat.id).length > 0 : false;
   const parents = cx.roots.filter((r) => !!r.income === isIncome && r.id !== cat?.id);
@@ -32,6 +33,7 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
       color,
       parentId: parent || undefined,
       hidden: cat?.hidden,
+      extraordinary: !parent && !isIncome && extra ? true : undefined,
       income: isIncome || undefined,
       budget: !isIncome && Number.isFinite(b) && b > 0 ? b : undefined,
       order: cat?.order ?? (Math.max(0, ...cx.list.map((c) => c.order)) + 1),
@@ -82,6 +84,17 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
             <input id="c-budget" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value.replace(/[^\d.,]/g, ''))} placeholder="Sem limite" />
             <span className="hint">{parent ? 'Conta só para esta subcategoria.' : 'Inclui o que gastares nas subcategorias.'}</span>
           </div>
+        )}
+        {!parent && !isIncome && (
+          <label className="check">
+            <input type="checkbox" checked={extra} onChange={(e) => setExtra(e.target.checked)} />
+            <span>
+              Despesa extraordinária
+              <span className="small muted" style={{ display: 'block' }}>
+                Para gastos únicos e grandes, como comprar casa. Aparece à parte e não conta para os gastos do mês nem para os orçamentos.
+              </span>
+            </span>
+          </label>
         )}
         <button className="btn" onClick={save} disabled={!name.trim()}>
           Guardar
@@ -146,7 +159,7 @@ export function CategoriesPage() {
             <CatIcon id={r.id} />
             <button className="cat-row-main" onClick={() => setEdit({ cat: r })}>
               <b>{r.name}</b>
-              <small>{r.budget ? `Orçamento ${fmt(r.budget)}/mês` : type === 'out' ? 'Sem orçamento' : 'Entrada'}</small>
+              <small>{r.extraordinary ? 'Extraordinária · fora dos gastos do mês' : r.budget ? `Orçamento ${fmt(r.budget)}/mês` : type === 'out' ? 'Sem orçamento' : 'Entrada'}</small>
             </button>
             <input type="checkbox" className="toggle" checked={!r.hidden} onChange={(e) => setHidden(r, !e.target.checked)} aria-label={`Mostrar ${r.name}`} />
           </div>
