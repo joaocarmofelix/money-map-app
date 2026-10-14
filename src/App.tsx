@@ -13,6 +13,7 @@ import { BackupPage, MORE_TITLES, MoreMenu, RulesPage, SetupPage, type MorePage 
 import { CategoriesPage } from './ui/Categories';
 import { AccountsPage } from './ui/Accounts';
 import { GoalsPage } from './ui/Goals';
+import { PeoplePage } from './ui/People';
 import { QuickAdd } from './ui/QuickAdd';
 import { EditTx } from './ui/EditTx';
 import { Triage } from './ui/Triage';
@@ -133,6 +134,7 @@ function Shell() {
             {page === 'categories' && <CategoriesPage />}
             {page === 'accounts' && <AccountsPage txs={txs} />}
             {page === 'goals' && <GoalsPage txs={txs} settings={settings} />}
+            {page === 'people' && <PeoplePage txs={txs} />}
             {page === 'setup' && <SetupPage />}
             {page === 'rules' && <RulesPage />}
             {page === 'backup' && <BackupPage />}

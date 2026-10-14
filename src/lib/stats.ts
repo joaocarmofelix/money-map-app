@@ -167,7 +167,19 @@ export function accountList(all: Tx[], settings: Settings): AccountView[] {
   const bal = accountBalances(all);
   const out: AccountView[] = [];
   for (const id of ['mil', 'bkt']) {
-    if (bal[id]) out.push({ key: id, name: BANKS[id].name, icon: 'landmark', color: BANKS[id].color, balance: bal[id].balance, sub: `Extrato de ${dm(bal[id].date)}`, group: 'bank' });
+    if (!bal[id]) continue;
+    // Statement balance, plus what you logged by hand after the statement's last day.
+    const after = all.filter((t) => t.source === 'manual' && t.account === id && t.date > bal[id].date);
+    const est = Math.round((bal[id].balance + after.reduce((a, t) => a + t.amount, 0)) * 100) / 100;
+    out.push({
+      key: id,
+      name: BANKS[id].name,
+      icon: 'landmark',
+      color: BANKS[id].color,
+      balance: est,
+      sub: after.length ? `Estimado · extrato de ${dm(bal[id].date)} + ${after.length} apontados` : `Extrato de ${dm(bal[id].date)}`,
+      group: 'bank',
+    });
   }
   potBalances(all, settings).forEach((p, i) =>
     out.push({ key: `pot:${p.pot}`, name: p.pot, icon: 'piggy', color: POT_COLORS[i % POT_COLORS.length], balance: p.balance, sub: 'Apparte Millennium', group: 'pot' }),

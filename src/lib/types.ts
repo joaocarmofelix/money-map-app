@@ -41,6 +41,8 @@ export interface Tx {
   pot?: string;
   /** Investment account this transfer feeds (e.g. 't212') */
   invest?: string;
+  /** Person this transfer went to or came from */
+  personId?: number;
   /** Cash withdrawal (ATM): money moved to the Dinheiro account */
   cash?: boolean;
   /** You confirmed this own transfer is between tracked accounts, even without a matching movement */
@@ -85,6 +87,15 @@ export interface Settings {
   demo?: boolean;
   /** You cleared the example data; don't load it again automatically */
   demoDismissed?: boolean;
+}
+
+export interface Person {
+  id?: number;
+  /** How you want to see them, e.g. "Maria (irmã)" */
+  name: string;
+  /** Name as the bank writes it, e.g. "MARIA EDUARDA CARMO FELIX" (matched as whole words) */
+  match: string;
+  relation: 'familia' | 'amigos' | 'outro';
 }
 
 export interface Goal {

@@ -317,3 +317,7 @@ details.how ol { margin: 6px 0; padding-left: 20px; }
 .lo-actions .btn { width: 100%; }
 .pick { display: flex; justify-content: space-between; gap: 10px; align-items: center; background: var(--surface-2); border: 0; border-radius: 12px; padding: 9px 12px; text-align: left; }
 .pick small { display: block; color: var(--ink-2); font-size: 12px; }
+.reason-row { padding: 10px 0; display: grid; gap: 6px; }
+.reason-row + .reason-row { border-top: 1px solid var(--line); }
+.reason { width: 100%; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 9px 11px; font-size: 14px; }
+.person-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-soft); color: var(--primary); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; border: 0; }

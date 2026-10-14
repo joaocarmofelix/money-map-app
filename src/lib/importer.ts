@@ -1,5 +1,5 @@
-import type { ParsedTx, Rule, Settings, Tx } from './types';
-import { classify, matchRule, potName } from './classify';
+import type { ParsedTx, Person, Rule, Settings, Tx } from './types';
+import { classify, matchRule, personCategory, personFor, potName } from './classify';
 import { norm } from './text';
 
 export function txKey(t: ParsedTx, occurrence = 0): string {
@@ -55,6 +55,7 @@ export function planImport(
   rules: Rule[],
   settings: Settings,
   knownPots: string[],
+  people: Person[] = [],
 ): ImportPlan {
   // Pot names come in full on the main account side; collect them first.
   const pots = new Set(knownPots);
@@ -86,7 +87,14 @@ export function planImport(
     }
     const { kind, pot, invest, cash } = classify(t, settings.ownerNames, potList);
     const tx: Tx = { ...t, key, kind, pot, invest, cash, source: 'import' };
-    if (kind !== 'transfer') tx.categoryId = matchRule(t.description, rules, kind)?.categoryId;
+    if (kind !== 'transfer') {
+      tx.categoryId = matchRule(t.description, rules, kind)?.categoryId;
+      const person = personFor(t.description, people);
+      if (person) {
+        tx.personId = person.id;
+        tx.categoryId ??= personCategory(person, t.amount);
+      }
+    }
     add.push(tx);
   }
 

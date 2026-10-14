@@ -8,6 +8,8 @@ import { Sparkles } from 'lucide-react';
 import { buildSuggester, type Suggestion } from '../lib/suggest';
 import { CategoryPicker } from './CategoryPicker';
 import { OwnTransferChoices } from './OwnTransfers';
+import { PersonEditor, nameInTransfer } from './People';
+import { usePeople } from './kit';
 
 /** Category picker + "remember for similar". Shared by the edit sheet and the triage flow. */
 export function CategorizeBlock({ t, onDone, suggestion, similar = 0 }: { t: Tx; onDone: () => void; suggestion?: Suggestion | null; similar?: number }) {
@@ -60,6 +62,10 @@ export function CategorizeBlock({ t, onDone, suggestion, similar = 0 }: { t: Tx;
 }
 
 export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; history: Tx[] }) {
+  const people = usePeople();
+  const person = t.personId ? people.get(t.personId) : undefined;
+  const bankName = !person && t.kind !== 'transfer' ? nameInTransfer(t.description) : null;
+  const [newPerson, setNewPerson] = useState(false);
   const suggestion = !t.categoryId ? buildSuggester(history)(t) : null;
   const [note, setNote] = useState(t.note ?? '');
   const [confirm, setConfirm] = useState(false);
@@ -87,6 +93,18 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
           )}
         </div>
 
+        {person && <span className="person-chip">{person.name}</span>}
+        {bankName && (
+          <button className="link" style={{ justifySelf: 'start' }} onClick={() => setNewPerson(true)}>
+            Guardar {bankName} como pessoa
+          </button>
+        )}
+        {newPerson && bankName && (
+          <PersonEditor
+            initial={{ match: bankName, name: bankName.split(' ').slice(0, 2).map((w) => w[0] + w.slice(1).toLowerCase()).join(' '), relation: 'familia' }}
+            onClose={() => setNewPerson(false)}
+          />
+        )}
         {t.kind === 'transfer' ? (
           <>
             <p style={{ margin: 0 }}>
@@ -107,7 +125,7 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
           <>
             <CategorizeBlock t={t} onDone={onClose} suggestion={suggestion} />
             <div className="field">
-              <label htmlFor="note">Nota</label>
+              <label htmlFor="note">{t.personId || nameInTransfer(t.description) ? 'Motivo' : 'Nota'}</label>
               <input id="note" value={note} placeholder="Ex.: jantar de anos" onChange={(e) => setNote(e.target.value)} onBlur={() => db.txs.update(t.id!, { note: note || undefined })} />
             </div>
             <div className="row2">

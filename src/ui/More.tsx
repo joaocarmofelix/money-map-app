@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronRight, DatabaseBackup, FileUp, Sparkles, Tags, Target, UserCog, Trash2, Wallet } from 'lucide-react';
+import { ChevronRight, DatabaseBackup, FileUp, Sparkles, Tags, Target, UserCog, Trash2, Users, Wallet } from 'lucide-react';
 import { clearAll, db, exportBackup, getSettings, loadDemo, restoreBackup, updateSettings } from '../lib/db';
 import { today } from '../lib/text';
 import { isOwnTransfer } from '../lib/classify';
 import type { Settings } from '../lib/types';
 import { CatIcon, toast, useCats } from './kit';
 
-export type MorePage = 'import' | 'accounts' | 'goals' | 'categories' | 'setup' | 'rules' | 'backup';
+export type MorePage = 'import' | 'accounts' | 'goals' | 'categories' | 'people' | 'setup' | 'rules' | 'backup';
 export const MORE_TITLES: Record<MorePage, string> = {
   import: 'Importar extratos',
   accounts: 'Contas',
   goals: 'Objetivos',
   categories: 'Categorias e orçamentos',
+  people: 'Pessoas',
   setup: 'Perfil e data de início',
   rules: 'Regras aprendidas',
   backup: 'Dados e cópias',
@@ -25,6 +26,7 @@ export function MoreMenu({ open }: { open: (p: MorePage) => void }) {
     { id: 'accounts', icon: Wallet, sub: 'Appartes, Trading 212 e o que aparece no início' },
     { id: 'goals', icon: Target, sub: 'Juntar um valor, poupar todos os meses' },
     { id: 'categories', icon: Tags, sub: 'Ativar, criar e definir orçamentos' },
+    { id: 'people', icon: Users, sub: 'Família e amigos: quanto enviaste, recebeste e porquê' },
     { id: 'setup', icon: UserCog, sub: 'O teu nome nos bancos e quando começar a contar' },
     { id: 'rules', icon: Sparkles, sub: `${rules} ${rules === 1 ? 'regra' : 'regras'}` },
     { id: 'backup', icon: DatabaseBackup, sub: 'Cópia de segurança, dados de exemplo, apagar tudo' },

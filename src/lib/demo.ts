@@ -1,4 +1,4 @@
-import type { Goal, Rule, Settings, Tx } from './types';
+import type { Goal, Person, Rule, Settings, Tx } from './types';
 
 /**
  * Six months of made-up but realistic data for trying the app.
@@ -24,6 +24,8 @@ interface Ev {
   kind?: Tx['kind'];
   pot?: string;
   invest?: string;
+  personId?: number;
+  note?: string;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -98,6 +100,9 @@ export function buildDemo(todayIso: string) {
     if (r() > 0.6) card(m, 1 + Math.floor(r() * days), 'FARMACIA ALMADA', 5, 25, 'farmacia');
     if (r() > 0.6) card(m, 1 + Math.floor(r() * days), pick(['WORTEN 2650-435 LISBOA', 'FNAC ALMADA']), 20, 90, 'tecnologia');
     if (r() > 0.5) add({ account: 'mil', date: `${m}-${pad(1 + Math.floor(r() * days))}`, amount: -amt(8, 30), description: 'TRF MB WAY P/ RICARDO AMIGO CS', categoryId: 'amigos' });
+    // Family: a sister who sometimes sends money back, sometimes gets some
+    if (mi % 2 === 0 && d(16) >= 16) add({ account: 'mil', date: `${m}-16`, amount: -amt(15, 40), description: 'TRF MB WAY P/ MARIA EXEMPLO CS', categoryId: 'familia', personId: 1, note: pick(['Metade das compras para casa', 'Prenda da mãe (metade)', 'Bilhetes do concerto']) });
+    if (mi % 3 === 1 && d(20) >= 20) add({ account: 'mil', date: `${m}-20`, amount: amt(20, 60), description: 'TRF. P/O MARIA EXEMPLO', categoryId: 'pessoas-in', personId: 1, note: 'Devolveu o que lhe emprestei' });
   });
 
   // A transfer to an old Caixa account (no other side), to show the "sem par" alert
@@ -135,6 +140,8 @@ export function buildDemo(todayIso: string) {
       categoryId: e.categoryId,
       pot: e.pot,
       invest: e.invest,
+      personId: e.personId,
+      note: e.note,
       source: 'import' as const,
     };
   });
@@ -163,5 +170,6 @@ export function buildDemo(todayIso: string) {
   };
 
   const budgets: Record<string, number> = { super: 230, comerfora: 170, lazer: 150, mobilidade: 140, subscricoes: 35, roupa: 70, casa: 90 };
-  return { txs, rules, goals, settings, budgets };
+  const people: Person[] = [{ id: 1, name: 'Maria (irmã)', match: 'MARIA EXEMPLO', relation: 'familia' }];
+  return { txs, rules, goals, settings, budgets, people };
 }

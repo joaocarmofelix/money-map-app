@@ -3,20 +3,28 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { db } from '../lib/db';
 import { accountName, indexCategories, investName, type CatIndex } from '../lib/categories';
-import type { Category, Tx } from '../lib/types';
+import type { Category, Person, Tx } from '../lib/types';
 import type { BudgetState } from '../lib/stats';
 import { Icon } from './icons';
 import { fmt, monthLabel, pretty, today } from '../lib/text';
 
 /* ---------- categories context ---------- */
 const CatsCtx = createContext<CatIndex | null>(null);
+const PeopleCtx = createContext<Map<number, Person>>(new Map());
 export function CatsProvider({ children }: { children: ReactNode }) {
   const list = useLiveQuery(() => db.categories.toArray(), []);
+  const people = useLiveQuery(() => db.people.toArray(), []);
   const cx = useMemo(() => (list ? indexCategories(list) : null), [list]);
+  const pm = useMemo(() => new Map((people ?? []).map((p) => [p.id!, p])), [people]);
   if (!cx) return null;
-  return <CatsCtx.Provider value={cx}>{children}</CatsCtx.Provider>;
+  return (
+    <CatsCtx.Provider value={cx}>
+      <PeopleCtx.Provider value={pm}>{children}</PeopleCtx.Provider>
+    </CatsCtx.Provider>
+  );
 }
 export const useCats = () => useContext(CatsCtx)!;
+export const usePeople = () => useContext(PeopleCtx);
 export const colorVar = (c?: Category) => (c ? `var(--s${(c.color % 8) + 1})` : 'var(--ink-3)');
 
 /* ---------- small pieces ---------- */
@@ -76,8 +84,11 @@ export function MonthPicker({ month, onChange }: { month: string; onChange: (del
 
 export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
   const cx = useCats();
+  const people = usePeople();
+  const person = t.personId ? people.get(t.personId) : undefined;
   const isTr = t.kind === 'transfer';
-  const title = t.note && t.source === 'import' ? t.note : t.source === 'import' ? pretty(t.description) : t.description;
+  const base = person ? person.name : t.source === 'import' ? pretty(t.description) : t.description;
+  const title = t.note && t.source === 'import' ? (person ? `${person.name} · ${t.note}` : t.note) : base;
   const sub = isTr
     ? t.cash
       ? 'Levantamento · para Dinheiro'

@@ -1,4 +1,4 @@
-import type { Kind, ParsedTx, Rule } from './types';
+import type { Kind, ParsedTx, Person, Rule } from './types';
 import { containsWord, norm } from './text';
 import { DEFAULT_INCOME_IDS, INVESTMENTS } from './categories';
 
@@ -50,4 +50,17 @@ export function matchRule(desc: string, rules: Rule[], kind?: Kind): Rule | unde
 export function isCashWithdrawal(desc: string): boolean {
   const d = norm(desc);
   return /^(LEVANTAMENTO|LEV\.? ?(ATM|NUM|MB)?\b)/.test(d) || /\bLEVANTAMENTO\b/.test(d);
+}
+
+/** The saved person a bank description mentions, if any (longest name wins). */
+export function personFor(desc: string, people: Person[]): Person | undefined {
+  const d = norm(desc);
+  return people
+    .filter((p) => p.match.trim().length > 2 && containsWord(d, norm(p.match)))
+    .sort((a, b) => b.match.length - a.match.length)[0];
+}
+
+export function personCategory(p: Person, amount: number): string {
+  if (amount > 0) return 'pessoas-in';
+  return p.relation === 'familia' ? 'familia' : p.relation === 'amigos' ? 'amigos' : 'pessoas';
 }

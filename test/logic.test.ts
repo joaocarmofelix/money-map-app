@@ -214,3 +214,23 @@ describe('matching what you logged by hand', () => {
     expect(plan.add[0]).toMatchObject({ kind: 'transfer', cash: true });
   });
 });
+
+import { nameInTransfer } from '../src/ui/People';
+describe('people', () => {
+  it('reads names from transfers', () => {
+    expect(nameInTransfer('TRF MB WAY P/ MARIA EDUARDA CARMO FELIX CS')).toBe('MARIA EDUARDA CARMO FELIX');
+    expect(nameInTransfer('TRF. P/O RICARDO ALEXANDRE DIAS CABRITA')).toBe('RICARDO ALEXANDRE DIAS CABRITA');
+    expect(nameInTransfer('Trf Imediata p/ SANDRA VELOZA - Reconhec')).toBe('SANDRA VELOZA');
+    expect(nameInTransfer('TRF P/ MillenniumBcp     Stocks')).toBeNull();
+    expect(nameInTransfer('COMPRA 7782 LIDL')).toBeNull();
+  });
+  it('links imported transfers to a saved person', () => {
+    const s0 = { ownerNames: [], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [] };
+    const parsed = [
+      { account: 'mil', date: '2026-10-01', amount: -20, description: 'TRF MB WAY P/ MARIA EDUARDA CARMO FELIX CS', balance: 80 },
+      { account: 'mil', date: '2026-10-02', amount: 30, description: 'TRF. P/O MARIA EDUARDA CARMO FELIX', balance: 110 },
+    ];
+    const plan = planImport(parsed, new Set(), [], [], s0, [], [{ id: 7, name: 'Maria', match: 'MARIA EDUARDA', relation: 'familia' }]);
+    expect(plan.add.map((t) => [t.personId, t.categoryId])).toEqual([[7, 'familia'], [7, 'pessoas-in']]);
+  });
+});

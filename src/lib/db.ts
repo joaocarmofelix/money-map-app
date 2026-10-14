@@ -1,10 +1,10 @@
 import Dexie, { type Table } from 'dexie';
-import type { Category, Goal, ImportLog, ParseResult, Rule, Settings, Tx } from './types';
+import type { Category, Goal, ImportLog, ParseResult, Person, Rule, Settings, Tx } from './types';
 import { DEFAULT_CATEGORIES, HOUSE_IDS, LEGACY_IDS } from './categories';
 import { buildDemo } from './demo';
 import { planImport } from './importer';
 import { norm } from './text';
-import { matchRule } from './classify';
+import { matchRule, personCategory, personFor } from './classify';
 
 class MoneyMapDB extends Dexie {
   txs!: Table<Tx, number>;
@@ -13,6 +13,7 @@ class MoneyMapDB extends Dexie {
   kv!: Table<{ k: string; v: unknown }, string>;
   categories!: Table<Category, string>;
   goals!: Table<Goal, number>;
+  people!: Table<Person, number>;
   constructor() {
     super('moneymap');
     this.version(1).stores({
@@ -59,6 +60,13 @@ class MoneyMapDB extends Dexie {
         .filter((t: Tx) => !t.categoryId && t.kind === 'expense' && /\bPHB\b/i.test(t.description))
         .modify({ categoryId: 'cc-credito' });
     });
+    // v6: people you send money to or receive from.
+    this.version(6)
+      .stores({ people: '++id', txs: '++id, &key, date, account, kind, categoryId, source, personId' })
+      .upgrade(async (tx) => {
+        const have = new Set((await tx.table('categories').toCollection().primaryKeys()) as string[]);
+        await tx.table('categories').bulkAdd(DEFAULT_CATEGORIES.filter((c) => c.id === 'pessoas-in' && !have.has(c.id)));
+      });
     this.on('populate', (tx) => {
       tx.table('rules').add({ pattern: 'PHB', categoryId: 'cc-credito', createdAt: Date.now() });
       tx.table('categories').bulkAdd(DEFAULT_CATEGORIES);
@@ -94,10 +102,10 @@ export async function knownPots(): Promise<string[]> {
 }
 
 export async function runImport(fileName: string, parsed: ParseResult) {
-  return db.transaction('rw', db.txs, db.rules, db.imports, db.kv, async () => {
+  return db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.people], async () => {
     const existing = new Set((await db.txs.toArray()).map((t) => t.key));
     const manual = await db.txs.where('source').equals('manual').toArray();
-    const plan = planImport(parsed.txs, existing, manual, await db.rules.toArray(), await getSettings(), await knownPots());
+    const plan = planImport(parsed.txs, existing, manual, await db.rules.toArray(), await getSettings(), await knownPots(), await db.people.toArray());
     const dates = parsed.txs.map((t) => t.date).sort();
     const importId = await db.imports.add({
       at: Date.now(),
@@ -153,6 +161,7 @@ export async function exportBackup(): Promise<string> {
       rules: await db.rules.toArray(),
       categories: await db.categories.toArray(),
       goals: await db.goals.toArray(),
+      people: await db.people.toArray(),
       imports: await db.imports.toArray(),
       settings: await getSettings(),
     },
@@ -164,9 +173,11 @@ export async function exportBackup(): Promise<string> {
 export async function restoreBackup(json: string) {
   const data = JSON.parse(json);
   if (data.app !== 'moneymap') throw new Error('Este ficheiro não é uma cópia de segurança desta app.');
-  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals], async () => {
+  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals, db.people], async () => {
     await db.goals.clear();
     if (data.goals?.length) await db.goals.bulkAdd(data.goals);
+    await db.people.clear();
+    if (data.people?.length) await db.people.bulkAdd(data.people);
     await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear()]);
     if (data.categories?.length) {
       await db.categories.clear();
@@ -198,20 +209,21 @@ export async function deleteCategory(id: string) {
 /** Replace everything with the example data set. */
 export async function loadDemo(todayIso: string) {
   const d = buildDemo(todayIso);
-  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals], async () => {
-    await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear(), db.goals.clear(), db.categories.clear()]);
+  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals, db.people], async () => {
+    await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear(), db.goals.clear(), db.categories.clear(), db.people.clear()]);
     await db.categories.bulkAdd(DEFAULT_CATEGORIES.map((c) => ({ ...c, budget: d.budgets[c.id] })));
     await db.txs.bulkAdd(d.txs);
     await db.rules.bulkAdd(d.rules);
     await db.goals.bulkAdd(d.goals);
+    await db.people.bulkAdd(d.people);
     await db.kv.put({ k: 'settings', v: d.settings });
   });
 }
 
 /** Delete all data and start over with the default categories. */
 export async function clearAll(keepDismissed = true) {
-  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals], async () => {
-    await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear(), db.goals.clear(), db.categories.clear()]);
+  await db.transaction('rw', [db.txs, db.rules, db.imports, db.kv, db.categories, db.goals, db.people], async () => {
+    await Promise.all([db.txs.clear(), db.rules.clear(), db.imports.clear(), db.goals.clear(), db.categories.clear(), db.people.clear()]);
     await db.categories.bulkAdd(DEFAULT_CATEGORIES);
     await db.rules.add({ pattern: 'PHB', categoryId: 'cc-credito', createdAt: Date.now() });
     await db.kv.put({ k: 'settings', v: { ...DEFAULT_SETTINGS, demoDismissed: keepDismissed } });
@@ -226,5 +238,17 @@ export async function mergeManual(manualId: number, importedId: number) {
     if (!m || !t) return;
     await db.txs.update(importedId, { categoryId: m.categoryId ?? t.categoryId, note: m.note || m.description });
     await db.txs.delete(manualId);
+  });
+}
+
+/** Link a person to their transfers (past ones too) and give uncategorized ones the matching category. */
+export async function linkPerson(person: Person) {
+  await db.transaction('rw', db.txs, async () => {
+    const all = await db.txs.filter((t) => t.kind !== 'transfer' && t.source === 'import').toArray();
+    for (const t of all) {
+      const hit = personFor(t.description, [person]);
+      if (hit) await db.txs.update(t.id!, { personId: person.id, categoryId: t.categoryId ?? personCategory(person, t.amount) });
+      else if (t.personId === person.id) await db.txs.update(t.id!, { personId: undefined });
+    }
   });
 }
