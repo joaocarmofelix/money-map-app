@@ -90,13 +90,15 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
         {t.kind === 'transfer' ? (
           <>
             <p style={{ margin: 0 }}>
-              {t.invest
+              {t.cash
+                ? 'Levantamento de dinheiro. Passa para a conta Dinheiro; os gastos contam quando os apontares pagos em dinheiro.'
+                : t.invest
                 ? `Dinheiro para investir na ${investName(t.invest)}. Não conta como gasto.`
                 : t.pot
                   ? `Movimento do apparte ${t.pot}. Não conta como gasto.`
                   : 'Transferência entre contas tuas. Não conta como gasto.'}
             </p>
-            {!t.pot && !t.invest && <OwnTransferChoices t={t} onDone={onClose} />}
+            {!t.pot && !t.invest && !t.cash && <OwnTransferChoices t={t} onDone={onClose} />}
             <button className="btn ghost" onClick={() => setKind(t.amount < 0 ? 'expense' : 'income')}>
               Não é para mim, contar como {t.amount < 0 ? 'gasto' : 'entrada'} normal
             </button>

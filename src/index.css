@@ -303,3 +303,17 @@ details.how ol { margin: 6px 0; padding-left: 20px; }
 .acc-edit { border: 1.5px dashed var(--line); background: none; box-shadow: none; justify-content: center; align-items: center; color: var(--ink-2); font-weight: 700; font-size: 13px; flex-basis: 120px; }
 .acc .top { min-width: 0; }
 .acc .top .cat-ico.sm { width: 28px; height: 28px; border-radius: 9px; }
+.recon { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.recon div { background: var(--surface-2); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.recon dt { font-size: 11.5px; color: var(--ink-2); }
+.recon dd { margin: 2px 0 0; font-weight: 800; font-size: 14px; }
+.recon-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.recon-list li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; }
+.recon-list svg { margin-top: 2px; }
+.leftover { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 8px; }
+.lo-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.lo-head small { display: block; color: var(--ink-2); font-size: 12.5px; }
+.lo-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.lo-actions .btn { width: 100%; }
+.pick { display: flex; justify-content: space-between; gap: 10px; align-items: center; background: var(--surface-2); border: 0; border-radius: 12px; padding: 9px 12px; text-align: left; }
+.pick small { display: block; color: var(--ink-2); font-size: 12px; }

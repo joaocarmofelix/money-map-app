@@ -176,6 +176,12 @@ export function accountList(all: Tx[], settings: Settings): AccountView[] {
   if (un !== null && Math.abs(un) > 0.005) {
     out.push({ key: 'pot:_unassigned', name: 'Appartes por atribuir', icon: 'piggy', color: 'var(--ink-3)', balance: un, sub: 'Indica o saldo inicial de cada apparte', group: 'pot' });
   }
+  // Cash: what you withdrew at ATMs, minus what you logged as paid in cash.
+  const cashTx = all.filter((t) => t.cash || t.account === 'cash');
+  if (cashTx.length) {
+    const balance = cashTx.reduce((a, t) => a + (t.account === 'cash' ? t.amount : -t.amount), 0);
+    out.push({ key: 'cash', name: 'Dinheiro', icon: 'banknote', color: 'var(--s6)', balance: Math.round(balance * 100) / 100, sub: 'Levantamentos menos gastos em dinheiro', group: 'bank' });
+  }
   for (const i of investBalances(all, settings)) {
     out.push({ key: `inv:${i.id}`, name: investName(i.id), icon: 'trending', color: 'var(--s1)', balance: i.invested, sub: 'Investido', group: 'invest' });
   }
@@ -227,7 +233,7 @@ export function goalProgress(g: Goal, all: Tx[], settings: Settings, cx: CatInde
  * an account the app doesn't track, or a statement that hasn't been imported yet.
  */
 export function unpairedOwnTransfers(all: Tx[]): Tx[] {
-  const own = all.filter((t) => t.kind === 'transfer' && !t.pot && !t.invest && t.account !== 'mil-apparte');
+  const own = all.filter((t) => t.kind === 'transfer' && !t.pot && !t.invest && !t.cash && t.account !== 'mil-apparte');
   const used = new Set<number>();
   const out: Tx[] = [];
   const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400000;

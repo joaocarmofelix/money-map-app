@@ -217,3 +217,14 @@ export async function clearAll(keepDismissed = true) {
     await db.kv.put({ k: 'settings', v: { ...DEFAULT_SETTINGS, demoDismissed: keepDismissed } });
   });
 }
+
+/** Join a hand-logged entry to a bank movement you picked: the bank movement keeps your category and note. */
+export async function mergeManual(manualId: number, importedId: number) {
+  await db.transaction('rw', db.txs, async () => {
+    const m = await db.txs.get(manualId);
+    const t = await db.txs.get(importedId);
+    if (!m || !t) return;
+    await db.txs.update(importedId, { categoryId: m.categoryId ?? t.categoryId, note: m.note || m.description });
+    await db.txs.delete(manualId);
+  });
+}

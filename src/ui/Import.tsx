@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { FileUp } from 'lucide-react';
 import { parseFile } from '../lib/parsers';
 import { db, runImport } from '../lib/db';
+import type { Reconciliation } from '../lib/importer';
+import { ReconcileSheet } from './Reconcile';
 
 interface Outcome {
   file: string;
@@ -23,12 +25,14 @@ const dmy = (d?: string) => (d ? d.split('-').reverse().join('/') : '');
 export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<Outcome[]>([]);
+  const [recon, setRecon] = useState<{ list: Reconciliation[]; intro: string | null } | null>(null);
   const history = useLiveQuery(() => db.imports.orderBy('at').reverse().limit(12).toArray(), []);
 
   async function handle(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true);
     const out: Outcome[] = [];
+    const recons: Reconciliation[] = [];
     for (const f of Array.from(files)) {
       try {
         const parsed = await parseFile(f);
@@ -37,6 +41,7 @@ export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void })
           continue;
         }
         const plan = await runImport(f.name, parsed);
+        recons.push(...plan.recon);
         const dates = parsed.txs.map((t) => t.date).sort();
         out.push({ file: f.name, bank: parsed.bank, open: plan.add.filter((t) => !t.categoryId && t.kind !== 'transfer').length, added: plan.add.length, skipped: plan.skipped, merged: plan.merges.length, tooOld: plan.tooOld, from: dates[0], to: dates[dates.length - 1], warnings: parsed.warnings });
       } catch (e) {
@@ -47,16 +52,27 @@ export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void })
     setBusy(false);
     const added = out.reduce((a, r) => a + r.added, 0);
     const open = await db.txs.filter((t) => !t.categoryId && t.kind !== 'transfer').count();
-    if (added > 0 && open > 0) {
-      const auto = added - out.reduce((a, r) => a + (r.open ?? 0), 0);
-      onTriage(
-        `${added} movimentos importados${auto > 0 ? `, ${auto} já categorizados ou marcados como transferência` : ''}. Falta categorizar ${open}.`,
-      );
-    }
+    const auto = added - out.reduce((a, r) => a + (r.open ?? 0), 0);
+    const intro = added > 0 && open > 0 ? `${added} movimentos importados${auto > 0 ? `, ${auto} já categorizados ou marcados como transferência` : ''}. Falta categorizar ${open}.` : null;
+    // Show the comparison first when you had logged anything by hand; then go on to categorize.
+    const relevant = recons.filter((r) => r.manualCount > 0 || r.leftover.length > 0);
+    if (relevant.length) setRecon({ list: relevant, intro });
+    else if (intro) onTriage(intro);
   }
 
   return (
     <div className="stack">
+      {recon && (
+        <ReconcileSheet
+          recon={recon.list}
+          onClose={async () => {
+            const intro = recon.intro;
+            setRecon(null);
+            const open = await db.txs.filter((t) => !t.categoryId && t.kind !== 'transfer').count();
+            if (open > 0) onTriage(intro ?? undefined);
+          }}
+        />
+      )}
       <label className="drop">
         <input type="file" accept=".pdf,.xls,.xlsx,application/pdf" multiple onChange={(e) => (handle(e.target.files), (e.target.value = ''))} />
         <span className="qi">

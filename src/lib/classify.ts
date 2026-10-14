@@ -23,7 +23,8 @@ export function classify(
   t: ParsedTx,
   ownerNames: string[],
   knownPots: string[],
-): { kind: Kind; pot?: string; invest?: string } {
+): { kind: Kind; pot?: string; invest?: string; cash?: boolean } {
+  if (t.amount < 0 && isCashWithdrawal(t.description)) return { kind: 'transfer', cash: true };
   const inv = INVESTMENTS.find((i) => i.match.test(t.description));
   if (inv) return { kind: 'transfer', invest: inv.id };
   const pot = potName(t.description, knownPots);
@@ -43,4 +44,10 @@ export function matchRule(desc: string, rules: Rule[], kind?: Kind): Rule | unde
     if (r.pattern && containsWord(d, r.pattern) &&(!best || r.pattern.length > best.pattern.length)) best = r;
   }
   return best;
+}
+
+/** ATM withdrawals ("LEVANTAMENTO", "LEV. ATM"): the money goes to your wallet, it isn't spent yet. */
+export function isCashWithdrawal(desc: string): boolean {
+  const d = norm(desc);
+  return /^(LEVANTAMENTO|LEV\.? ?(ATM|NUM|MB)?\b)/.test(d) || /\bLEVANTAMENTO\b/.test(d);
 }

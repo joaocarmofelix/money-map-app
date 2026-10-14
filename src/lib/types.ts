@@ -41,6 +41,8 @@ export interface Tx {
   pot?: string;
   /** Investment account this transfer feeds (e.g. 't212') */
   invest?: string;
+  /** Cash withdrawal (ATM): money moved to the Dinheiro account */
+  cash?: boolean;
   /** You confirmed this own transfer is between tracked accounts, even without a matching movement */
   confirmed?: boolean;
   source: 'import' | 'manual';

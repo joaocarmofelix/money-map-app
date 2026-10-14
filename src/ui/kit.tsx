@@ -79,7 +79,9 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
   const isTr = t.kind === 'transfer';
   const title = t.note && t.source === 'import' ? t.note : t.source === 'import' ? pretty(t.description) : t.description;
   const sub = isTr
-    ? t.invest
+    ? t.cash
+      ? 'Levantamento · para Dinheiro'
+      : t.invest
       ? `Investimento · ${investName(t.invest)}`
       : t.pot
         ? `Apparte ${t.pot}`
@@ -88,7 +90,7 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
   return (
     <button className="tx" onClick={onClick}>
       {isTr ? (
-        <IconTile icon={t.invest ? 'trending' : t.pot ? 'piggy' : 'transfer'} color="var(--ink-2)" />
+        <IconTile icon={t.cash ? 'banknote' : t.invest ? 'trending' : t.pot ? 'piggy' : 'transfer'} color="var(--ink-2)" />
       ) : (
         <CatIcon id={t.categoryId} />
       )}

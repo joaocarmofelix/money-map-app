@@ -180,3 +180,37 @@ describe('demo data', () => {
     console.log(acc.map((a) => `${a.name} ${a.balance}`).join(' | '));
   });
 });
+
+describe('matching what you logged by hand', () => {
+  const man = (id: number, date: string, amount: number, account = 'mil', extra: Partial<Tx> = {}): Tx => ({ id, key: `m${id}`, account, date, amount, description: `manual ${id}`, kind: amount < 0 ? 'expense' : 'income', source: 'manual', categoryId: 'onepiece', ...extra });
+  const s0 = { ownerNames: ['ANA SILVA TESTE'], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [] };
+  const stmt = (rows: [string, number, string?][], account = 'mil') => {
+    let bal = 1000;
+    return rows.map(([date, amount, d]) => ({ account, date, amount, description: d ?? 'COMPRA 7782 LOJA DO TCG LISBOA', balance: (bal = Math.round((bal + amount) * 100) / 100) }));
+  };
+
+  it('pairs Wednesday and Saturday tournaments with their own day', () => {
+    // logged Wed 1, Sat 4, Wed 8 (forgot Sat 11); bank posts each a day later
+    const manual = [man(1, '2026-10-01', -10), man(2, '2026-10-04', -10), man(3, '2026-10-08', -10)];
+    const parsed = stmt([['2026-10-02', -10], ['2026-10-05', -10], ['2026-10-09', -10], ['2026-10-12', -10]]);
+    const plan = planImport(parsed, new Set(), manual, [], s0, []);
+    const byManual = Object.fromEntries(plan.merges.map((m) => [m.manualId, plan.add.find((t) => t.key === m.key)!.date]));
+    expect(byManual).toEqual({ 1: '2026-10-02', 2: '2026-10-05', 3: '2026-10-09' });
+    const r = plan.recon[0];
+    expect([r.manualCount, r.bankCount, r.matched, r.missing.count, r.leftover.length]).toEqual([3, 4, 3, 1, 0]);
+    expect(r.missing.sum).toBe(10);
+  });
+
+  it('falls back to another account, merges income, and reports leftovers', () => {
+    const manual = [man(1, '2026-10-03', -25, 'mil'), man(2, '2026-10-10', 300, 'bkt', { categoryId: 'reembolso' }), man(3, '2026-10-15', -12, 'mil')];
+    const parsed = stmt([['2026-10-04', -25], ['2026-10-10', 300, 'TRF DE ALGUEM']], 'bkt');
+    const plan = planImport(parsed, new Set(), manual, [], s0, []);
+    expect(plan.merges.map((m) => m.manualId).sort()).toEqual([1, 2]);
+    expect(plan.add.find((t) => t.amount === 300)?.categoryId).toBe('reembolso');
+  });
+
+  it('treats ATM withdrawals as cash, not spending', () => {
+    const plan = planImport(stmt([['2026-10-04', -50, 'LEVANTAMENTO 7782 MB ALMADA']]), new Set(), [], [], s0, []);
+    expect(plan.add[0]).toMatchObject({ kind: 'transfer', cash: true });
+  });
+});
