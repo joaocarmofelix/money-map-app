@@ -1,24 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { ArrowLeft, Home as HomeIcon, List, Menu, PieChart, Plus } from 'lucide-react';
 import { db, getSettings } from './lib/db';
-import { monthLabel, shiftMonth, today } from './lib/text';
+import { shiftMonth, today } from './lib/text';
 import type { Tx } from './lib/types';
-import { Summary } from './ui/Summary';
+import { CatsProvider, Toaster } from './ui/kit';
+import { Home } from './ui/Home';
+import { Insights } from './ui/Insights';
 import { Movements, type Filter } from './ui/Movements';
-import { Import } from './ui/Import';
-import { More } from './ui/More';
+import { ImportPage } from './ui/Import';
+import { BackupPage, MORE_TITLES, MoreMenu, RulesPage, SetupPage, type MorePage } from './ui/More';
+import { CategoriesPage } from './ui/Categories';
 import { QuickAdd } from './ui/QuickAdd';
 import { EditTx } from './ui/EditTx';
 import { Triage } from './ui/Triage';
-import { Toaster } from './ui/shared';
 
-type Tab = 'resumo' | 'movimentos' | 'importar' | 'mais';
+type Tab = 'home' | 'insights' | 'movements' | 'more';
 
 export default function App() {
+  return (
+    <CatsProvider>
+      <Shell />
+    </CatsProvider>
+  );
+}
+
+function Shell() {
   const params = new URLSearchParams(location.search);
-  const [tab, setTab] = useState<Tab>((params.get('tab') as Tab) || 'resumo');
+  const startTab = params.get('tab');
+  const [tab, setTab] = useState<Tab>(startTab === 'importar' ? 'more' : 'home');
+  const [page, setPage] = useState<MorePage | null>(startTab === 'importar' ? 'import' : null);
   const [month, setMonth] = useState(today().slice(0, 7));
+  const [userNav, setUserNav] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const [cat, setCat] = useState<string | null>(null);
   const [adding, setAdding] = useState(params.get('add') === '1');
   const [editing, setEditing] = useState<Tx | null>(null);
   const [triage, setTriage] = useState(false);
@@ -26,84 +41,95 @@ export default function App() {
   const txs = useLiveQuery(() => db.txs.toArray(), []);
   const settings = useLiveQuery(getSettings, []);
 
+  useEffect(() => {
+    if (params.toString()) history.replaceState(null, '', location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Follow the latest month with data until you pick a month yourself.
-  const [userNav, setUserNav] = useState(false);
   useEffect(() => {
     if (userNav || !txs?.length) return;
     const latest = txs.reduce((m, t) => (t.date > m ? t.date : m), '').slice(0, 7);
     if (latest && latest <= today().slice(0, 7)) setMonth(latest);
   }, [txs, userNav]);
-  const nav = (delta: number) => {
+
+  const nav = (d: number) => {
     setUserNav(true);
-    setMonth((m) => shiftMonth(m, delta));
+    setMonth((m) => shiftMonth(m, d));
   };
-
-  useEffect(() => {
-    if (params.get('add')) history.replaceState(null, '', location.pathname);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const closeTriage = useCallback(() => setTriage(false), []);
-  const go = (t: Tab) => {
+  const pickMonth = (ym: string) => {
+    setUserNav(true);
+    setMonth(ym);
+  };
+  const go = (t: Tab, p: MorePage | null = null) => {
     setTab(t);
+    setPage(p);
     window.scrollTo(0, 0);
   };
+  const showCategory = (id: string) => {
+    setCat(id);
+    setFilter('all');
+    go('movements');
+  };
+  const closeTriage = useCallback(() => setTriage(false), []);
 
   if (!txs || !settings) return null;
-  const showMonth = tab === 'resumo' || tab === 'movimentos';
-  const nowMonth = today().slice(0, 7);
+
+  const tabBtn = (id: Tab, label: string, Icon: typeof HomeIcon) => (
+    <button aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}>
+      <span className="ti">
+        <Icon size={21} strokeWidth={tab === id ? 2.4 : 2} />
+      </span>
+      {label}
+    </button>
+  );
 
   return (
     <div className="app">
-      {showMonth ? (
-        <header className="month">
-          <button className="icon-btn" onClick={() => nav(-1)} aria-label="Mês anterior">
-            ‹
-          </button>
-          <h1>{monthLabel(month)}</h1>
-          <button className="icon-btn" onClick={() => nav(1)} disabled={month >= nowMonth} aria-label="Mês seguinte">
-            ›
-          </button>
-        </header>
-      ) : (
-        <div style={{ height: 8 }} />
-      )}
-
       <main>
-        {tab === 'resumo' && (
-          <Summary
+        {tab === 'home' && (
+          <Home
             txs={txs}
-            month={month}
             settings={settings}
+            month={month}
+            go={(w) => (w === 'import' ? go('more', 'import') : w === 'setup' ? go('more', 'setup') : go(w))}
+            onOpen={setEditing}
             onTriage={() => setTriage(true)}
-            onImport={() => go('importar')}
-            onFood={() => {
-              setFilter('food');
-              go('movimentos');
-            }}
+            onFood={() => showCategory('_food')}
           />
         )}
-        {tab === 'movimentos' && <Movements txs={txs} month={month} filter={filter} setFilter={setFilter} onOpen={setEditing} />}
-        {tab === 'importar' && <Import onNeedName={() => go('mais')} onTriage={() => setTriage(true)} />}
-        {tab === 'mais' && <More />}
+        {tab === 'insights' && <Insights txs={txs} month={month} setMonth={pickMonth} nav={nav} onCategory={showCategory} />}
+        {tab === 'movements' && (
+          <Movements txs={txs} month={month} nav={nav} filter={filter} setFilter={setFilter} cat={cat} setCat={setCat} onOpen={setEditing} />
+        )}
+        {tab === 'more' && !page && <MoreMenu open={(p) => go('more', p)} />}
+        {tab === 'more' && page && (
+          <>
+            <header className="appbar">
+              <button className="icon-btn" onClick={() => go('more')} aria-label="Voltar">
+                <ArrowLeft size={20} />
+              </button>
+              <h1 style={{ fontSize: 20 }}>{MORE_TITLES[page]}</h1>
+            </header>
+            {page === 'import' && <ImportPage onTriage={() => setTriage(true)} />}
+            {page === 'categories' && <CategoriesPage />}
+            {page === 'setup' && <SetupPage />}
+            {page === 'rules' && <RulesPage />}
+            {page === 'backup' && <BackupPage />}
+          </>
+        )}
       </main>
 
       <nav className="tabs" aria-label="Secções">
-        <button aria-current={tab === 'resumo' ? 'page' : undefined} onClick={() => go('resumo')}>
-          <span className="i" aria-hidden>◔</span>Resumo
-        </button>
-        <button aria-current={tab === 'movimentos' ? 'page' : undefined} onClick={() => go('movimentos')}>
-          <span className="i" aria-hidden>≡</span>Movimentos
-        </button>
-        <button className="add" onClick={() => setAdding(true)} aria-label="Adicionar gasto">
-          +
-        </button>
-        <button aria-current={tab === 'importar' ? 'page' : undefined} onClick={() => go('importar')}>
-          <span className="i" aria-hidden>⇣</span>Importar
-        </button>
-        <button aria-current={tab === 'mais' ? 'page' : undefined} onClick={() => go('mais')}>
-          <span className="i" aria-hidden>⋯</span>Mais
-        </button>
+        <div className="tabs-in">
+          {tabBtn('home', 'Início', HomeIcon)}
+          {tabBtn('insights', 'Resumo', PieChart)}
+          <button className="add" onClick={() => setAdding(true)} aria-label="Adicionar movimento">
+            <Plus size={28} strokeWidth={2.5} />
+          </button>
+          {tabBtn('movements', 'Movimentos', List)}
+          {tabBtn('more', 'Mais', Menu)}
+        </div>
       </nav>
 
       {adding && <QuickAdd onClose={() => setAdding(false)} />}

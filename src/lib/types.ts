@@ -11,9 +11,16 @@ export interface Category {
   id: string;
   name: string;
   emoji: string;
-  /** Food paid from a bank account instead of the meal card */
+  /** Index into the chart palette (0-7) */
+  color: number;
+  /** Set for subcategories (e.g. One Piece TCG under Entretenimento) */
+  parentId?: string;
+  /** Food paid from a bank account instead of the meal card (inherited by subcategories) */
   food?: boolean;
   income?: boolean;
+  /** Monthly spending limit in euros */
+  budget?: number;
+  order: number;
 }
 
 export interface Tx {
@@ -40,6 +47,8 @@ export interface Rule {
   id?: number;
   pattern: string; // normalized substring
   categoryId: string;
+  /** Rule learned from money coming in (only applies to income) */
+  income?: boolean;
   createdAt: number;
 }
 

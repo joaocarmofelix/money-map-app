@@ -14,6 +14,6 @@ for m in re.finditer(r'(<script\b[^>]*>)(.*?)(</script>)|<style\b.*?</style>', h
     else:
         parts.append(m.group(0))
 out = ('<title>MoneyMap</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n'
-       '<meta name="theme-color" content="#1d6a66">\n' + '\n'.join(parts) + '\n' + body)
+       '<meta name="theme-color" content="#2547d0">\n' + '\n'.join(parts) + '\n' + body)
 open(sys.argv[1], 'w').write(out)
 print('wrote', sys.argv[1], len(out))

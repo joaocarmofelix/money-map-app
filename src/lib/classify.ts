@@ -1,6 +1,6 @@
 import type { Kind, ParsedTx, Rule } from './types';
 import { containsWord, norm } from './text';
-import { INCOME_IDS, INVESTMENTS } from './categories';
+import { DEFAULT_INCOME_IDS, INVESTMENTS } from './categories';
 
 /** Apparte transfers look like "TRF P/ MillenniumBcp     Stocks" / "TRF DE Transferencia MillenniumBcp Fun". */
 export function potName(desc: string, knownPots: string[] = []): string | null {
@@ -39,7 +39,7 @@ export function matchRule(desc: string, rules: Rule[], kind?: Kind): Rule | unde
   let best: Rule | undefined;
   for (const r of rules) {
     // An income rule ("Outras entradas") must not tag money going out to the same person, and vice versa.
-    if (kind && INCOME_IDS.has(r.categoryId) !== (kind === 'income')) continue;
+    if (kind && (r.income ?? DEFAULT_INCOME_IDS.has(r.categoryId)) !== (kind === 'income')) continue;
     if (r.pattern && containsWord(d, r.pattern) &&(!best || r.pattern.length > best.pattern.length)) best = r;
   }
   return best;

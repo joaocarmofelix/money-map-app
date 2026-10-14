@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Sheet, CategoryGrid, toast } from './shared';
 import { db } from '../lib/db';
 import { ACCOUNTS } from '../lib/categories';
 import { today } from '../lib/text';
+import { Sheet, toast } from './kit';
+import { CategoryPicker } from './CategoryPicker';
 
 const LAST_ACC = 'moneymap:lastAccount';
 function lastAccount() {
@@ -26,12 +27,11 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
 
   async function save() {
     if (!ok) return;
-    const signed = Math.round((income ? value : -value) * 100) / 100;
     await db.txs.add({
       key: `manual|${crypto.randomUUID()}`,
       account,
       date,
-      amount: signed,
+      amount: Math.round((income ? value : -value) * 100) / 100,
       description: desc.trim() || (income ? 'Entrada' : 'Gasto'),
       kind: income ? 'income' : 'expense',
       categoryId: cat,
@@ -42,21 +42,21 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
     } catch {
       /* not essential */
     }
-    toast(account === 'cash' ? 'Gasto guardado' : 'Guardado. Junta-se ao movimento do banco quando importares o extrato.');
+    toast(account === 'cash' ? 'Guardado' : 'Guardado. Junta-se ao movimento do banco quando importares o extrato.');
     onClose();
   }
 
   return (
-    <Sheet onClose={onClose} label="Adicionar gasto">
-      <div className="seg" role="group" aria-label="Tipo">
-        <button aria-pressed={!income} onClick={() => (setIncome(false), setCat(undefined))}>
-          Gasto
-        </button>
-        <button aria-pressed={income} onClick={() => (setIncome(true), setCat(undefined))}>
-          Entrada
-        </button>
-      </div>
-      <div className="field">
+    <Sheet onClose={onClose} label="Adicionar movimento">
+      <div className="stack">
+        <div className="seg" role="group" aria-label="Tipo">
+          <button aria-pressed={!income} onClick={() => (setIncome(false), setCat(undefined))}>
+            Gasto
+          </button>
+          <button aria-pressed={income} onClick={() => (setIncome(true), setCat(undefined))}>
+            Entrada
+          </button>
+        </div>
         <input
           className="amount-in num"
           inputMode="decimal"
@@ -65,31 +65,32 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ''))}
           aria-label="Valor"
+          style={{ width: '100%' }}
         />
-      </div>
-      <div className="field">
-        <input placeholder="O quê? (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Descrição" />
-      </div>
-      <CategoryGrid value={cat} onPick={setCat} income={income} />
-      <div className="row">
         <div className="field">
-          <label htmlFor="acc">Pago com</label>
-          <select id="acc" value={account} onChange={(e) => setAccount(e.target.value)}>
-            {ACCOUNTS.filter((a) => !a.isSavings).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <input placeholder="Descrição (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Descrição" />
         </div>
-        <div className="field">
-          <label htmlFor="date">Dia</label>
-          <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <CategoryPicker value={cat} onPick={setCat} income={income} />
+        <div className="row2">
+          <div className="field">
+            <label htmlFor="acc">{income ? 'Conta' : 'Pago com'}</label>
+            <select id="acc" value={account} onChange={(e) => setAccount(e.target.value)}>
+              {ACCOUNTS.filter((a) => !a.isSavings).map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="date">Dia</label>
+            <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
         </div>
+        <button className="btn" disabled={!ok} onClick={save}>
+          Guardar {income ? 'entrada' : 'gasto'}
+        </button>
       </div>
-      <button className="btn" disabled={!ok} style={{ opacity: ok ? 1 : 0.5 }} onClick={save}>
-        Guardar {income ? 'entrada' : 'gasto'}
-      </button>
     </Sheet>
   );
 }

@@ -83,7 +83,7 @@ describe('rules', () => {
 
 describe('kind-aware rules', () => {
   it('does not apply an income rule to an expense', () => {
-    const rules = [{ pattern: 'MARIA EDUARDA', categoryId: 'outros-in', createdAt: 0 }];
+    const rules = [{ pattern: 'MARIA EDUARDA', categoryId: 'outros-in', createdAt: 0, income: true }];
     expect(matchRule('TRF MB WAY P/ MARIA EDUARDA X', rules, 'expense')).toBeUndefined();
     expect(matchRule('TRF. P/O MARIA EDUARDA X', rules, 'income')?.categoryId).toBe('outros-in');
   });
@@ -100,5 +100,27 @@ describe('start date and investments', () => {
     expect(plan.tooOld).toBe(1);
     expect(plan.add).toHaveLength(1);
     expect(plan.add[0]).toMatchObject({ kind: 'transfer', invest: 't212' });
+  });
+});
+
+import { budgetStatus, monthStats } from '../src/lib/stats';
+import { DEFAULT_CATEGORIES, indexCategories } from '../src/lib/categories';
+
+describe('categories and budgets', () => {
+  const cx = indexCategories(DEFAULT_CATEGORIES);
+  it('rolls subcategory spending up to the parent and marks food', () => {
+    const t = (categoryId: string, amount: number): Tx => ({ key: categoryId + amount, account: 'mil', date: '2026-10-05', amount, description: 'x', kind: 'expense', categoryId, source: 'import' });
+    const s = monthStats([t('onepiece', -30), t('lazer', -10), t('super', -20)], '2026-10', cx);
+    expect(s.byCat.get('lazer')).toBe(40);
+    expect(s.byCat.get('onepiece')).toBe(30);
+    expect(s.byRoot.find((r) => r.id === 'lazer')?.total).toBe(40);
+    expect(s.food).toBe(20);
+  });
+  it('flags budgets by amount and by pace', () => {
+    expect(budgetStatus(120, 100, '2026-09', '2026-10-14').state).toBe('over');
+    expect(budgetStatus(90, 100, '2026-09', '2026-10-14').state).toBe('warn');
+    expect(budgetStatus(40, 100, '2026-09', '2026-10-14').state).toBe('ok');
+    // 60 € by the 10th of a 31-day month projects ~186 €
+    expect(budgetStatus(60, 100, '2026-10', '2026-10-10').state).toBe('warn');
   });
 });
