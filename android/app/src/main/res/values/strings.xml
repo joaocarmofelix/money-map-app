@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MoneyMap</string>
+    <string name="title_activity_main">MoneyMap</string>
+    <string name="package_name">pt.moneymap.app</string>
+    <string name="custom_url_scheme">pt.moneymap.app</string>
+    <string name="widget_description">Gastos do mês e um botão para adicionar um movimento</string>
+</resources>
