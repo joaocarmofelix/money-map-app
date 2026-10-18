@@ -1,49 +1,85 @@
 import { useMemo, useState } from 'react';
 import { needsCategory } from '../lib/tags';
-import { CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2 } from 'lucide-react';
 import type { Tx } from '../lib/types';
 import { accountName } from '../lib/categories';
+import { categorize, getSettings } from '../lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Mascot } from './Companion';
 import { fmt, pretty } from '../lib/text';
 import { buildSuggester, triageOrder } from '../lib/suggest';
-import { Sheet } from './kit';
+import { Sheet, toast, useCats } from './kit';
 import { CategorizeBlock } from './EditTx';
 
-/**
- * Uncategorized movements one at a time. Biggest groups of similar movements come first,
- * so one decision clears many. "Decidir depois" leaves a movement for later.
- */
-export function Triage({ txs, intro, onClose, onShowLater }: { txs: Tx[]; intro?: string; onClose: () => void; onShowLater: () => void }) {
-  const open = useMemo(() => txs.filter(needsCategory), [txs]);
-  const suggest = useMemo(() => buildSuggester(txs), [txs]);
-  const [later, setLater] = useState<Set<number>>(new Set());
-  const [total] = useState(open.length);
-  const queue = useMemo(() => triageOrder(open.filter((t) => !later.has(t.id!))), [open, later]);
-  const cur = queue[0];
-  const done = total - open.length;
+const short = (d: string) => d.split('-').reverse().slice(0, 2).join('/');
 
-  if (!cur) {
+/**
+ * Every movement still waiting for a category, newest first. Pick the ones you recognise;
+ * a suggestion from your history can be accepted straight from the list.
+ */
+export function Triage({ txs, intro, onClose }: { txs: Tx[]; intro?: string; onClose: () => void }) {
+  const cx = useCats();
+  const open = useMemo(() => txs.filter(needsCategory).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)), [txs]);
+  const suggest = useMemo(() => buildSuggester(txs), [txs]);
+  const similar = useMemo(() => new Map(triageOrder(open).map((x) => [x.tx.id, x.similar])), [open]);
+  const [selId, setSelId] = useState<number | null>(null);
+  const [done, setDone] = useState(0);
+  const sel = open.find((t) => t.id === selId);
+  const pinSettings = useLiveQuery(getSettings, []);
+  const companionOn = !!pinSettings && pinSettings.companion !== false;
+
+  async function accept(t: Tx, categoryId: string) {
+    await categorize(t.id!, categoryId, null);
+    setDone((n) => n + 1);
+    toast(`Guardado em ${cx.byId.get(categoryId)?.name}`);
+  }
+
+  if (sel) {
+    return (
+      <Sheet onClose={onClose} label="Categorizar movimento" tall>
+        <div className="triage stack">
+          <button className="link" style={{ alignSelf: 'flex-start' }} onClick={() => setSelId(null)}>
+            <ArrowLeft size={16} /> Voltar à lista ({open.length})
+          </button>
+          <div>
+            <p className="desc">{pretty(sel.description)}</p>
+            <p className="small muted" style={{ margin: '2px 0 0', wordBreak: 'break-word' }}>
+              {accountName(sel.account)} · {sel.date.split('-').reverse().join('/')} · {sel.description}
+            </p>
+            <p className="amt num" style={{ margin: '6px 0 0' }}>
+              {fmt(sel.amount)}
+            </p>
+          </div>
+          <CategorizeBlock
+            key={sel.id}
+            t={sel}
+            onDone={() => {
+              setDone((n) => n + 1);
+              setSelId(null);
+            }}
+            suggestion={suggest(sel)}
+            similar={similar.get(sel.id) ?? 0}
+          />
+        </div>
+      </Sheet>
+    );
+  }
+
+  if (!open.length) {
     return (
       <Sheet onClose={onClose} label="Categorizar movimentos" tall>
         <div className="done-state stack">
-          <div className="qi">{later.size ? <Clock size={28} /> : <CheckCircle2 size={28} />}</div>
-          <h3>{later.size ? `Ficaram ${later.size} para decidir depois` : 'Está tudo categorizado'}</h3>
+          {companionOn ? (
+            <Mascot size={72} look={pinSettings?.pin} />
+          ) : (
+            <div className="qi">
+              <CheckCircle2 size={28} />
+            </div>
+          )}
+          <h3>Está tudo categorizado</h3>
           <p className="muted" style={{ margin: 0 }}>
-            {later.size
-              ? 'Encontras estes movimentos em Movimentos › Por categorizar, quando souberes o que foram.'
-              : done > 0
-                ? `Categorizaste ${done} movimentos. Os próximos parecidos já entram com categoria.`
-                : 'Não há nada por categorizar.'}
+            {done > 0 ? `Categorizaste ${done} ${done === 1 ? 'movimento' : 'movimentos'}.` : 'Não há nada por categorizar.'}
           </p>
-          {later.size > 0 && (
-            <button className="btn ghost" onClick={() => setLater(new Set())}>
-              Rever os que deixei para depois
-            </button>
-          )}
-          {later.size > 0 && (
-            <button className="btn ghost" onClick={onShowLater}>
-              Ver na lista de movimentos
-            </button>
-          )}
           <button className="btn" onClick={onClose}>
             Concluir
           </button>
@@ -52,39 +88,39 @@ export function Triage({ txs, intro, onClose, onShowLater }: { txs: Tx[]; intro?
     );
   }
 
-  const t = cur.tx;
   return (
-    <Sheet onClose={onClose} label="Categorizar movimentos" tall>
-      <div className="triage stack">
-        {intro && done === 0 && later.size === 0 && <div className="intro">{intro}</div>}
-        <div className="stack" style={{ gap: 6 }}>
-          <div className="small muted" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Por categorizar: {open.length}</span>
-            <span className="num">
-              {done} feitos{later.size ? ` · ${later.size} para depois` : ''}
-            </span>
-          </div>
-          <div className="progress">
-            <span style={{ width: `${(done / Math.max(1, total)) * 100}%` }} />
-          </div>
-        </div>
-        <div>
-          <p className="desc">{pretty(t.description)}</p>
-          <p className="small muted" style={{ margin: '2px 0 0', wordBreak: 'break-word' }}>
-            {accountName(t.account)} · {t.date.split('-').reverse().join('/')} · {t.description}
-          </p>
-          <p className="amt num" style={{ margin: '6px 0 0' }}>
-            {fmt(t.amount)}
-          </p>
-        </div>
-        <CategorizeBlock key={t.id} t={t} onDone={() => undefined} suggestion={suggest(t)} similar={cur.similar} />
-        <div className="row2">
-          <button className="btn ghost" onClick={() => setLater(new Set(later).add(t.id!))}>
-            Decidir depois
-          </button>
-          <button className="btn ghost" onClick={onClose}>
-            Parar
-          </button>
+    <Sheet onClose={onClose} label="Movimentos por categorizar" title={`Por categorizar (${open.length})`} tall>
+      <div className="stack" style={{ gap: 10 }}>
+        {intro && done === 0 && <div className="intro">{intro}</div>}
+        <p className="small muted" style={{ margin: 0 }}>
+          Toca num movimento para escolher a categoria, ou aceita a sugestão quando aparece. Os que não sabes ficam aqui para depois.
+        </p>
+        <div className="uc-list">
+          {open.map((t) => {
+            const sg = suggest(t);
+            const sgCat = sg ? cx.byId.get(sg.categoryId) : undefined;
+            return (
+              <div className="uc" key={t.id}>
+                <button className="uc-main" onClick={() => setSelId(t.id!)}>
+                  <span className="uc-t">{pretty(t.description)}</span>
+                  <span className="uc-a num" style={t.amount > 0 ? { color: 'var(--good)' } : undefined}>
+                    {fmt(t.amount)}
+                  </span>
+                  <span className="uc-s">
+                    {short(t.date)} · {accountName(t.account)}
+                    {(similar.get(t.id) ?? 0) > 0 ? ` · +${similar.get(t.id)} parecidos` : ''}
+                  </span>
+                </button>
+                {sg && sgCat && (
+                  <div className="uc-actions">
+                    <button className="uc-chip" onClick={() => accept(t, sg.categoryId)} aria-label={`Aceitar ${cx.label(sg.categoryId)}`}>
+                      <Check size={14} /> {sgCat.name}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </Sheet>

@@ -231,7 +231,7 @@ describe('people', () => {
       { account: 'mil', date: '2026-10-02', amount: 30, description: 'TRF. P/O MARIA EDUARDA CARMO FELIX', balance: 110 },
     ];
     const plan = planImport(parsed, new Set(), [], [], s0, [], [{ id: 7, name: 'Maria', match: 'MARIA EDUARDA', relation: 'familia' }]);
-    expect(plan.add.map((t) => [t.personId, t.categoryId])).toEqual([[7, 'familia'], [7, 'pessoas-in']]);
+    expect(plan.add.map((t) => [t.personId, t.categoryId])).toEqual([[7, 'familia'], [7, 'familia-in']]);
   });
 });
 
@@ -293,6 +293,32 @@ SALDO FINAL 5 150.00
       ['mil', 'transfer', 'Moneybox', 250],
       ['mil-apparte', 'transfer', 'Moneybox', -100],
       ['mil-apparte', 'transfer', 'Moneybox', -250],
+    ]);
+  });
+});
+
+describe('demo data', () => {
+  it('only has valid dates, even on the first day of a month', () => {
+    for (const day of ['2026-11-01', '2026-03-01', '2026-10-18']) {
+      const { txs } = buildDemo(day);
+      expect(txs.filter((t) => Number.isNaN(Date.parse(`${t.date}T12:00:00`)))).toEqual([]);
+    }
+  });
+});
+
+describe('Millennium months without leading zero', () => {
+  it('reads January lines printed as "1.05"', () => {
+    const lines = `CONTA MILLENNIUM N. 1 MOEDA: EUR
+EXTRATO DE 2026/01/02 A 2026/01/30
+SALDO INICIAL 1 000.00
+1.02 1.02 COMPRA 1234 LOJA TESTE 25.00 975.00
+1.29 1.29 PAGAMENTO DE VENCIMENTO 1 500.00 2 475.00
+SALDO FINAL 2 475.00`.split('\n');
+    const r = parseMillenniumLines(lines);
+    expect(r.warnings).toEqual([]);
+    expect(r.txs.map((t) => [t.date, t.amount])).toEqual([
+      ['2026-01-02', -25],
+      ['2026-01-29', 1500],
     ]);
   });
 });

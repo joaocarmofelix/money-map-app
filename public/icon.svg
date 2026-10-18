@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#2547d0"/><path d="M256 92c-72 0-130 57-130 128 0 92 104 186 120 200a15 15 0 0 0 20 0c16-14 120-108 120-200 0-71-58-128-130-128z" fill="#fff"/><circle cx="256" cy="222" r="78" fill="#2547d0"/><text x="256" y="252" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="92" text-anchor="middle" fill="#fff">€</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#2547d0"/><g transform="translate(256 256) scale(0.9) translate(-275 -253)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M244 346 C 300 340, 290 262, 344 266 C 372 268, 384 252, 384 230" stroke="#fff" stroke-width="30"/>
+  <path d="M212 300 A54 54 0 1 0 212 384" stroke="#fff" stroke-width="28"/>
+  <path d="M112 330 H196 M112 356 H190" stroke="#fff" stroke-width="18"/>
+  <path d="M384 238 C 368 220 330 188 330 150 a54 54 0 0 1 108 0 c0 38 -38 70 -54 88 z" fill="#2fd08f" stroke="none"/>
+  <circle cx="384" cy="150" r="20" fill="#2547d0"/>
+</g></svg>

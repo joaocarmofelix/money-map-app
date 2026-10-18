@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { db } from '../lib/db';
+import { db, updateSettings } from '../lib/db';
 import { ACCOUNTS } from '../lib/categories';
 import { today } from '../lib/text';
-import { Sheet, toast } from './kit';
+import { Picker, Sheet, toast } from './kit';
 import { CategoryPicker } from './CategoryPicker';
 import { TagsBlock } from './Tags';
 import { DEBT_TAGS } from '../lib/tags';
@@ -32,7 +32,6 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
 
   async function save() {
     if (!ok) return;
-    if (!ok) return;
     await db.txs.add({
       key: `manual|${crypto.randomUUID()}`,
       account,
@@ -45,6 +44,7 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
       personId,
       source: 'manual',
     });
+    await updateSettings({ lastManualAt: Date.now() });
     try {
       localStorage.setItem(LAST_ACC, account);
     } catch {
@@ -89,13 +89,7 @@ export function QuickAdd({ onClose }: { onClose: () => void }) {
         <div className="row2">
           <div className="field">
             <label htmlFor="acc">{income ? 'Conta' : 'Pago com'}</label>
-            <select id="acc" value={account} onChange={(e) => setAccount(e.target.value)}>
-              {ACCOUNTS.filter((a) => !a.isSavings).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <Picker id="acc" title={income ? 'Conta' : 'Pago com'} value={account} onChange={setAccount} options={ACCOUNTS.filter((a) => !a.isSavings).map((a) => ({ value: a.id, label: a.name }))} />
           </div>
           <div className="field">
             <label htmlFor="date">Dia</label>

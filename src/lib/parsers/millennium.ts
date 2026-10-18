@@ -20,7 +20,8 @@ export function parseMillenniumLines(lines: string[]): ParseResult {
   let prev: number | null = null;
 
   // Not anchored at the start: stray page text can precede a movement on the same line.
-  const lineRe = new RegExp(String.raw`(?:^|\s)(\d\d)\.(\d\d) \d\d\.\d\d (.+?)\s+(${NUM})\s+(${NUM})$`);
+  // Months 1–9 are printed without a leading zero ("1.05"), October onwards as "10.05".
+  const lineRe = new RegExp(String.raw`(?:^|\s)(\d{1,2})\.(\d\d) \d{1,2}\.\d\d (.+?)\s+(${NUM})\s+(${NUM})$`);
   const openRe = new RegExp(String.raw`^(SALDO INICIAL|TRANSPORTE)\s+(-?${NUM})$`);
   const closeRe = new RegExp(String.raw`^SALDO FINAL\s+(-?${NUM})$`);
 

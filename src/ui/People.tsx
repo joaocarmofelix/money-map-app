@@ -140,7 +140,7 @@ export function PersonEditor({ initial, onClose }: { initial: Partial<Person>; o
           ))}
         </div>
         <p className="small muted" style={{ margin: 0 }}>
-          O que enviares vai para Pessoas · {relation === 'familia' ? 'Família' : relation === 'amigos' ? 'Amigos' : 'Geral'}; o que receberes vai para Recebido de pessoas. Movimentos que já tinham categoria ficam como estão.
+          O que enviares vai para Pessoas · {relation === 'familia' ? 'Família' : relation === 'amigos' ? 'Amigos' : 'Geral'}; o que receberes vai para o mesmo grupo nas entradas. Movimentos que já tinham categoria ficam como estão.
         </p>
         <button className="btn" disabled={!ok} onClick={save}>
           Guardar
