@@ -7,7 +7,7 @@ permissions:
   contents: write
 concurrency:
   group: android
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   apk:
     runs-on: ubuntu-latest
