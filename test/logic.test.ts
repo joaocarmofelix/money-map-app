@@ -342,3 +342,21 @@ describe('page layout', () => {
     expect(arrange('home', ['recent', 'gone', 'recent', 'alerts', 'goals', 'accounts'])).toEqual(['recent', 'alerts', 'goals', 'accounts']);
   });
 });
+
+describe('same balance twice on one day', () => {
+  it('gives each movement its own key, and re-importing adds nothing', () => {
+    const lines = `CONTA APPARTE N. 1 MOEDA: EUR
+EXTRATO DE 2026/07/01 A 2026/07/31
+SALDO INICIAL 1 000.00
+7.08 7.08 TRF DE TESTE 100.00 1 100.00
+7.08 7.08 TRF P/ TESTE 100.00 1 000.00
+7.08 7.08 TRF DE TESTE 100.00 1 100.00
+SALDO FINAL 1 100.00`.split('\n');
+    const r = parseMillenniumLines(lines);
+    const s = { ownerNames: [], potStart: {}, trackFrom: '', investStart: {}, hiddenAccounts: [] };
+    const plan = planImport(r.txs, new Set(), [], [], s, []);
+    const keys = plan.add.map((t) => t.key);
+    expect(new Set(keys).size).toBe(3);
+    expect(planImport(r.txs, new Set(keys), [], [], s, []).add.length).toBe(0);
+  });
+});

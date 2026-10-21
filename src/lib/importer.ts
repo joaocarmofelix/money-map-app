@@ -3,9 +3,14 @@ import { classify, matchRule, personCategory, personFor, potName } from './class
 import { norm } from './text';
 
 export function txKey(t: ParsedTx, occurrence = 0): string {
-  // A running balance makes date+amount unique even for two identical coffees on the same day.
-  const tail = t.balance !== undefined ? `b${t.balance.toFixed(2)}` : `${norm(t.description)}#${occurrence}`;
-  return `${t.account}|${t.date}|${t.amount.toFixed(2)}|${tail}`;
+  // A running balance makes date+amount unique even for two identical coffees on the same day...
+  if (t.balance !== undefined) {
+    const k = `${t.account}|${t.date}|${t.amount.toFixed(2)}|b${t.balance.toFixed(2)}`;
+    // ...except when money goes out and back in on the same day (+100, −100, +100 lands on the same
+    // balance twice). The repeat gets a counter; the first one keeps the plain key, as before.
+    return occurrence > 0 ? `${k}#${occurrence}` : k;
+  }
+  return `${t.account}|${t.date}|${t.amount.toFixed(2)}|${norm(t.description)}#${occurrence}`;
 }
 
 const dayDiff = (a: string, b: string) => Math.abs((Date.parse(a) - Date.parse(b)) / 86400000);
@@ -77,7 +82,8 @@ export function planImport(
       tooOld++;
       continue;
     }
-    const base = `${t.account}|${t.date}|${t.amount.toFixed(2)}|${norm(t.description)}`;
+    // Count repeats of whatever the key is built from, so two lines never share a key.
+    const base = t.balance !== undefined ? txKey(t) : `${t.account}|${t.date}|${t.amount.toFixed(2)}|${norm(t.description)}`;
     const occ = seen.get(base) ?? 0;
     seen.set(base, occ + 1);
     const key = txKey(t, occ);
