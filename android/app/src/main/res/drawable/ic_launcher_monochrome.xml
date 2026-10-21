@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13+ themed icon: the Pin's silhouette, tinted by the system. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M54.00,80.52C49.32,74.28 33.72,61.02 33.72,47.76A20.28,20.28 0 0,1 74.28,47.76C74.28,61.02 58.68,74.28 54.00,80.52zM43.38,46.98a3.60,4.60 0 1,0 7.20,0a3.60,4.60 0 1,0 -7.20,0zM57.42,46.98a3.60,4.60 0 1,0 7.20,0a3.60,4.60 0 1,0 -7.20,0z" />
+</vector>

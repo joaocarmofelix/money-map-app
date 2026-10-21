@@ -4,7 +4,7 @@ import { categorize, db } from '../lib/db';
 import { accountName, INVESTMENTS, investName } from '../lib/categories';
 import { fmt, pretty, suggestPattern } from '../lib/text';
 import { CatIcon, Sheet, toast, useCats } from './kit';
-import { Sparkles } from 'lucide-react';
+import { Banknote, Sparkles } from 'lucide-react';
 import { buildSuggester, type Suggestion } from '../lib/suggest';
 import { CategoryPicker } from './CategoryPicker';
 import { OwnTransferChoices } from './OwnTransfers';
@@ -16,7 +16,7 @@ import { usePeople } from './kit';
 export function CategorizeBlock({ t, onDone, suggestion, similar = 0 }: { t: Tx; onDone: () => void; suggestion?: Suggestion | null; similar?: number }) {
   const cx = useCats();
   const [pattern, setPattern] = useState(suggestPattern(t.description));
-  const [remember, setRemember] = useState(t.source === 'import');
+  const [remember, setRemember] = useState(false);
 
   async function pick(id: string) {
     const n = await categorize(t.id!, id, remember ? pattern : null);
@@ -42,6 +42,22 @@ export function CategorizeBlock({ t, onDone, suggestion, similar = 0 }: { t: Tx;
         </button>
       )}
       <CategoryPicker value={t.categoryId} onPick={pick} income={t.kind === 'income'} />
+      {t.source === 'import' && t.account !== 'cash' && (
+        <button
+          className="cash-move"
+          onClick={async () => {
+            await db.txs.update(t.id!, { kind: 'transfer', cash: true, categoryId: undefined });
+            toast(t.amount > 0 ? 'Marcado como depósito de dinheiro' : 'Marcado como levantamento');
+            onDone();
+          }}
+        >
+          <Banknote size={18} />
+          <span>
+            <b>{t.amount > 0 ? 'Depósito de dinheiro' : 'Levantamento de dinheiro'}</b>
+            <small>{t.amount > 0 ? 'Dinheiro da carteira para o banco. Não conta como entrada.' : 'Do banco para a carteira. Não conta como gasto.'}</small>
+          </span>
+        </button>
+      )}
       {t.source === 'import' && (
         <div className="card" style={{ padding: 12 }}>
           <label className="check">
@@ -71,8 +87,8 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
   const [note, setNote] = useState(t.note ?? '');
   const [confirm, setConfirm] = useState(false);
 
-  async function setKind(kind: Kind, invest?: string) {
-    await db.txs.update(t.id!, { kind, invest, categoryId: kind === 'transfer' ? undefined : t.categoryId });
+  async function setKind(kind: Kind, invest?: string, cash?: boolean) {
+    await db.txs.update(t.id!, { kind, invest, cash: cash || undefined, categoryId: kind === 'transfer' ? undefined : t.categoryId });
     onClose();
   }
 
@@ -110,7 +126,9 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
           <>
             <p style={{ margin: 0 }}>
               {t.cash
-                ? 'Levantamento de dinheiro. Passa para a conta Dinheiro; os gastos contam quando os apontares pagos em dinheiro.'
+                ? t.amount > 0
+                  ? 'Depósito de dinheiro. Sai da conta Dinheiro para o banco; não é uma entrada nova, porque já contou quando recebeste o dinheiro.'
+                  : 'Levantamento de dinheiro. Passa para a conta Dinheiro; os gastos contam quando os apontares pagos em dinheiro.'
                 : t.invest
                 ? `Dinheiro para investir na ${investName(t.invest)}. Não conta como gasto.`
                 : t.pot

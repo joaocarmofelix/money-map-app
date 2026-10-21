@@ -4,11 +4,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 
 // `vite build --mode artifact` makes one self-contained HTML file (no service worker) for previewing in Claude.
+// `vite build --mode native` is for the Android app: no service worker, the files ship inside the APK.
 export default defineConfig(({ mode }) => ({
   // Relative base so the same build works on GitHub Pages (/moneymap/) or any host root.
   base: './',
   build: mode === 'artifact' ? { outDir: 'dist-artifact', assetsInlineLimit: () => true } : undefined,
-  plugins: mode === 'artifact' ? [react(), viteSingleFile()] : [
+  plugins: mode === 'artifact' ? [react(), viteSingleFile()] : mode === 'native' ? [react()] : [
     react(),
     VitePWA({
       registerType: 'autoUpdate',

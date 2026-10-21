@@ -1,1 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#2547d0"/><path d="M256 92c-72 0-130 57-130 128 0 92 104 186 120 200a15 15 0 0 0 20 0c16-14 120-108 120-200 0-71-58-128-130-128z" fill="#fff"/><circle cx="256" cy="222" r="78" fill="#2547d0"/><text x="256" y="252" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="92" text-anchor="middle" fill="#fff">€</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#2547D0"/><g transform="translate(51.19999999999999 44) scale(6.4)">
+  <ellipse cx="32" cy="76.5" rx="13" ry="2.8" fill="#000" opacity=".22"/>
+  <path d="M32 72C26 64 6 47 6 30a26 26 0 0 1 52 0c0 17-20 34-26 42z" fill="#2fd08f"/>
+  <path d="M32 72C29 68 22 61 16 52c8 6 22 6 32 0-6 9-13 16-16 20z" fill="#1baf7a" opacity=".55"/>
+  <ellipse cx="19" cy="17" rx="4.5" ry="7.5" transform="rotate(30 19 17)" fill="#fff" opacity=".35"/>
+  <circle cx="16.5" cy="37" r="3.6" fill="#ff8fab" opacity=".6"/><circle cx="47.5" cy="37" r="3.6" fill="#ff8fab" opacity=".6"/>
+  <ellipse cx="23" cy="29" rx="3.8" ry="4.8" fill="#0f1b3d"/><ellipse cx="41" cy="29" rx="3.8" ry="4.8" fill="#0f1b3d"/>
+  <circle cx="24.4" cy="27.2" r="1.3" fill="#fff"/><circle cx="42.4" cy="27.2" r="1.3" fill="#fff"/>
+  <path d="M26 38.5q6 6 12 0" fill="none" stroke="#0f1b3d" stroke-width="2.6" stroke-linecap="round"/></g></svg>

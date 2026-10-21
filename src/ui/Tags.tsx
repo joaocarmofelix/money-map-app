@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { DEBT_TAGS, TAG_OWE, TAG_OWED, TAG_SETTLE, allTags } from '../lib/tags';
 import type { Tx } from '../lib/types';
-import { usePeople } from './kit';
+import { Picker, usePeople } from './kit';
 
 const HELP: Record<string, string> = {
   [TAG_OWED]: 'Pagaste por alguém e essa pessoa vai devolver',
@@ -39,14 +39,7 @@ export function TagsBlock({ value, personId, onChange, amount }: { value: string
       {(debt || personId) && (
         <div className="field">
           <label htmlFor="tx-person">Pessoa</label>
-          <select id="tx-person" value={personId ?? ''} onChange={(e) => onChange(value, e.target.value ? Number(e.target.value) : undefined)}>
-            <option value="">Sem pessoa</option>
-            {[...people.values()].map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <Picker id="tx-person" title="Pessoa" value={personId ?? 0} onChange={(v) => onChange(value, v || undefined)} options={[{ value: 0, label: 'Sem pessoa' }, ...[...people.values()].map((p) => ({ value: p.id!, label: p.name }))]} />
           {people.size === 0 && <span className="hint">Cria pessoas em Mais › Pessoas para saberes quem te deve o quê.</span>}
         </div>
       )}

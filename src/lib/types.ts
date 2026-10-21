@@ -54,6 +54,8 @@ export interface Tx {
   source: 'import' | 'manual';
   note?: string;
   importId?: number;
+  /** The hand-logged entry this bank movement replaced, so deleting the import can bring it back */
+  manualOrig?: Omit<Tx, 'id'>;
 }
 
 export interface Rule {
@@ -77,6 +79,15 @@ export interface ImportLog {
   to?: string;
 }
 
+/** The statement file an import read, kept so you can download it again. */
+export interface ImportFile {
+  /** Same id as the import it belongs to */
+  id: number;
+  name: string;
+  type: string;
+  blob: Blob;
+}
+
 export interface Settings {
   ownerNames: string[];
   /** Apparte balances on trackFrom */
@@ -87,8 +98,32 @@ export interface Settings {
   investStart: Record<string, number>;
   /** Account keys hidden from the home screen (mil, bkt, pot:<name>, inv:<id>) */
   hiddenAccounts: string[];
+  /** Order of the account tiles on the home screen (keys); others go after */
+  accountOrder?: string[];
+  /** Section order per page (see lib/layout). */
+  layout?: Record<string, string[]>;
   /** Salary received on or after this day of the month counts toward the next month in reports (off when unset) */
   salaryShiftDay?: number;
+  /** Light or dark look; 'auto' (or unset) follows the phone */
+  theme?: 'auto' | 'light' | 'dark';
+  /** When a backup was last saved or shared (ms) */
+  lastBackupAt?: number;
+  /** The companion on the home screen; on unless turned off */
+  companion?: boolean;
+  /** Phone notifications for the companion's reminders (Android app); on unless turned off */
+  notifications?: boolean;
+  /** Whether the app already asked Android for notification permission */
+  notifAsked?: boolean;
+  /** Remind to log spending by hand after this many days without a manual entry (0 = never) */
+  remindManualDays?: number;
+  /** Remind to save a backup after this many months (0 = never) */
+  remindBackupMonths?: number;
+  /** How the companion looks (see PinLook in ui/Companion) */
+  pin?: Partial<PinLook>;
+  /** When you last logged something by hand (ms) */
+  lastManualAt?: number;
+  /** Companion reminders you dismissed: reminder id -> hidden until (ms) */
+  pinHidden?: Record<string, number>;
   /** The data is the built-in example set */
   demo?: boolean;
   /** You cleared the example data; don't load it again automatically */
@@ -135,3 +170,15 @@ export interface ParseResult {
   /** Last known balance per account, from the statement */
   closing: Record<string, number>;
 }
+
+/** How Pin looks. Every part has a plain default so an empty look is the classic Pin. */
+export interface PinLook {
+  color: 'mint' | 'sky' | 'orange' | 'pink' | 'purple' | 'yellow' | 'coral' | 'lime';
+  eyes: 'round' | 'big' | 'happy' | 'sleepy' | 'wink' | 'hearts' | 'dots';
+  mouth: 'smile' | 'grin' | 'cat' | 'tongue' | 'flat' | 'teeth' | 'smirk';
+  nose: 'none' | 'dot' | 'button' | 'triangle';
+  glasses: 'none' | 'round' | 'square' | 'sun' | 'heart' | 'monocle';
+  hair: 'none' | 'tuft' | 'cap' | 'beanie' | 'bow' | 'crown' | 'sprout' | 'tophat' | 'headphones' | 'party';
+  detail: 'blush' | 'freckles' | 'mustache' | 'brows' | 'bandaid' | 'none';
+}
+

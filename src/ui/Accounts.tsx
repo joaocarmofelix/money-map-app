@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getSettings, knownPots, updateSettings } from '../lib/db';
 import { INVESTMENTS } from '../lib/categories';
-import { accountList } from '../lib/stats';
+import { accountList, computedBalance } from '../lib/stats';
 import type { Settings, Tx } from '../lib/types';
 import { fmt } from '../lib/text';
 import { IconTile, toast } from './kit';
@@ -20,6 +20,13 @@ export function AccountsPage({ txs }: { txs: Tx[] }) {
     getSettings().then(setS);
   }, []);
   const accounts = useMemo(() => (s ? accountList(txs, s) : []), [txs, s]);
+  // The statement gives the appartes' combined balance before the first movement; not how it splits between them.
+  const potOpen = useMemo(() => {
+    const c = computedBalance(txs, 'mil-apparte');
+    if (!c) return null;
+    const first = txs.filter((t) => t.account === 'mil-apparte' && t.source === 'import').reduce((m, t) => (t.date < m ? t.date : m), '9999');
+    return { total: c.opening, date: first };
+  }, [txs]);
   if (!s) return null;
   const startLabel = s.trackFrom ? s.trackFrom.split('-').reverse().join('/') : 'o primeiro extrato';
 
@@ -68,13 +75,27 @@ export function AccountsPage({ txs }: { txs: Tx[] }) {
           <div>
             <b>Appartes em {startLabel}</b>
             <p className="small muted" style={{ margin: '2px 0 0' }}>
-              O extrato só mostra o total dos appartes. Indica quanto tinha cada um nessa data; daí em diante a app soma as transferências.
+              O extrato só mostra o total dos appartes, não quanto tinha cada um. Indica o valor de cada um nessa data; daí em diante a app soma as transferências.
             </p>
           </div>
+          {potOpen && (() => {
+            const given = pots.reduce((a, p) => a + (s.potStart[p] ?? 0), 0);
+            const left = Math.round((potOpen.total - given) * 100) / 100;
+            return (
+              <div className={`pot-check ${Math.abs(left) < 0.005 ? 'ok' : ''}`}>
+                <span>
+                  Total no extrato antes de {potOpen.date.split('-').reverse().join('/')}: <b className="num">{fmt(potOpen.total)}</b>
+                </span>
+                <span>
+                  {Math.abs(left) < 0.005 ? 'Os valores batem certo com o extrato.' : left > 0 ? <>Falta distribuir <b className="num">{fmt(left)}</b>.</> : <>Indicaste <b className="num">{fmt(-left)}</b> a mais.</>}
+                </span>
+              </div>
+            );
+          })()}
           {pots.map((p) => (
             <div className="field" key={p}>
               <label htmlFor={`pot-${p}`}>{p}</label>
-              <input id={`pot-${p}`} inputMode="decimal" defaultValue={s.potStart[p] ?? ''} placeholder="0,00" onBlur={(e) => setStart('potStart', p, e.target.value)} />
+              <input id={`pot-${p}`} inputMode="decimal" defaultValue={s.potStart[p] ?? ''} placeholder="0,00" onBlur={(e) => setStart('potStart', p, e.target.value)} key={`${p}-${s.potStart[p] ?? ''}`} />
             </div>
           ))}
         </section>

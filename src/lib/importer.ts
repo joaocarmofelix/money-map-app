@@ -115,6 +115,8 @@ export function planImport(
   for (const [i, m] of pairs) {
     const tx = add[i];
     merges.push({ manualId: m.id!, key: tx.key });
+    const { id: _id, ...orig } = m;
+    tx.manualOrig = orig;
     if (m.categoryId) tx.categoryId = m.categoryId;
     tx.note = m.note || m.description;
     if (m.tags?.length) tx.tags = m.tags;
@@ -182,6 +184,54 @@ export function matchManual(imported: Tx[], manual: Tx[]): [number, Tx][] {
     usedI.add(c.i);
     usedM.add(c.m.id!);
     out.push([c.i, c.m]);
+  }
+  return out;
+}
+
+/**
+ * Re-checks movements that are still waiting for a category with the current rules.
+ * Movements imported by an older version (or before your name was set) can be transfers
+ * that weren't recognised then: an apparte withdrawal, money between your own accounts.
+ * Re-importing the same statement skips them as duplicates, so this fixes them in place.
+ * Only touches imported movements you haven't categorised or linked to a person.
+ */
+export function reclassifyOpen(all: Tx[], settings: Settings, rules: Rule[], people: Person[] = []): { id: number; patch: Partial<Tx> }[] {
+  const pots = new Set<string>();
+  for (const t of all) {
+    if (t.account === 'mil-apparte') continue;
+    const p = t.pot ?? potName(t.description);
+    if (p) pots.add(p);
+  }
+  const potList = [...pots];
+  const out: { id: number; patch: Partial<Tx> }[] = [];
+  const open = all.filter((t) => t.id !== undefined && t.source === 'import' && !t.categoryId && !t.personId && t.kind !== 'transfer');
+  for (const t of open) {
+    const c = classify(t, settings.ownerNames, potList);
+    if (c.kind === 'transfer') {
+      out.push({ id: t.id!, patch: { kind: 'transfer', pot: c.pot, invest: c.invest, cash: c.cash } });
+      continue;
+    }
+    const patch: Partial<Tx> = {};
+    if (c.kind !== t.kind) patch.kind = c.kind;
+    const cat = matchRule(t.description, rules, c.kind)?.categoryId;
+    const person = personFor(t.description, people);
+    if (person) patch.personId = person.id;
+    const categoryId = cat ?? (person ? personCategory(person, t.amount) : undefined);
+    if (categoryId) patch.categoryId = categoryId;
+    if (Object.keys(patch).length) out.push({ id: t.id!, patch });
+  }
+  // Apparte side of a withdrawal: borrow the apparte name from the main account entry.
+  const fixed = new Map(out.map((u) => [u.id, u.patch]));
+  const view = all.map((t) => (t.id !== undefined && fixed.has(t.id) ? { ...t, ...fixed.get(t.id) } : t));
+  const used = new Set<number>();
+  for (const t of view) {
+    if (t.account !== 'mil-apparte' || t.pot || t.id === undefined) continue;
+    const o = view.find((x) => x.id !== undefined && !used.has(x.id) && x.account !== 'mil-apparte' && x.pot && x.date === t.date && Math.abs(x.amount + t.amount) < 0.005);
+    if (!o) continue;
+    used.add(o.id!);
+    const prev = fixed.get(t.id);
+    if (prev) prev.pot = o.pot;
+    else out.push({ id: t.id, patch: { pot: o.pot } });
   }
   return out;
 }

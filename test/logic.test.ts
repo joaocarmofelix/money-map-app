@@ -231,7 +231,7 @@ describe('people', () => {
       { account: 'mil', date: '2026-10-02', amount: 30, description: 'TRF. P/O MARIA EDUARDA CARMO FELIX', balance: 110 },
     ];
     const plan = planImport(parsed, new Set(), [], [], s0, [], [{ id: 7, name: 'Maria', match: 'MARIA EDUARDA', relation: 'familia' }]);
-    expect(plan.add.map((t) => [t.personId, t.categoryId])).toEqual([[7, 'familia'], [7, 'pessoas-in']]);
+    expect(plan.add.map((t) => [t.personId, t.categoryId])).toEqual([[7, 'familia'], [7, 'familia-in']]);
   });
 });
 
@@ -294,5 +294,51 @@ SALDO FINAL 5 150.00
       ['mil-apparte', 'transfer', 'Moneybox', -100],
       ['mil-apparte', 'transfer', 'Moneybox', -250],
     ]);
+  });
+});
+
+describe('demo data', () => {
+  it('only has valid dates, even on the first day of a month', () => {
+    for (const day of ['2026-11-01', '2026-03-01', '2026-10-18']) {
+      const { txs } = buildDemo(day);
+      expect(txs.filter((t) => Number.isNaN(Date.parse(`${t.date}T12:00:00`)))).toEqual([]);
+    }
+  });
+});
+
+describe('Millennium months without leading zero', () => {
+  it('reads January lines printed as "1.05"', () => {
+    const lines = `CONTA MILLENNIUM N. 1 MOEDA: EUR
+EXTRATO DE 2026/01/02 A 2026/01/30
+SALDO INICIAL 1 000.00
+1.02 1.02 COMPRA 1234 LOJA TESTE 25.00 975.00
+1.29 1.29 PAGAMENTO DE VENCIMENTO 1 500.00 2 475.00
+SALDO FINAL 2 475.00`.split('\n');
+    const r = parseMillenniumLines(lines);
+    expect(r.warnings).toEqual([]);
+    expect(r.txs.map((t) => [t.date, t.amount])).toEqual([
+      ['2026-01-02', -25],
+      ['2026-01-29', 1500],
+    ]);
+  });
+});
+
+describe('apparte names', () => {
+  it('reads the name with or without "TRF" and the dash', async () => {
+    const { potName } = await import('../src/lib/classify');
+    expect(potName('TRF DE Apparte - Moneybox')).toBe('Moneybox');
+    expect(potName('Apparte - Moneybox')).toBe('Moneybox');
+    expect(potName('APPARTE MONEYBOX')).toBe('MONEYBOX');
+    expect(potName('Apparte Future Go', ['Future Goals'])).toBe('Future Goals');
+    expect(potName('COMPRA 1234 LOJA TESTE')).toBeNull();
+  });
+});
+
+describe('page layout', () => {
+  it('keeps the saved order and slots in new sections', async () => {
+    const { arrange } = await import('../src/lib/layout');
+    expect(arrange('home')).toEqual(['accounts', 'goals', 'alerts', 'recent']);
+    expect(arrange('home', ['recent', 'accounts'])).toEqual(['recent', 'accounts', 'goals', 'alerts']);
+    expect(arrange('home', ['recent', 'gone', 'recent', 'alerts', 'goals', 'accounts'])).toEqual(['recent', 'alerts', 'goals', 'accounts']);
   });
 });

@@ -186,7 +186,7 @@ export function accountList(all: Tx[], settings: Settings): AccountView[] {
   const cashTx = all.filter((t) => t.cash || t.account === 'cash');
   if (cashTx.length) {
     const balance = cashTx.reduce((a, t) => a + (t.account === 'cash' ? t.amount : -t.amount), 0);
-    out.push({ key: 'cash', name: 'Dinheiro', icon: 'banknote', color: 'var(--s6)', balance: Math.round(balance * 100) / 100, sub: 'Levantamentos menos gastos em dinheiro', group: 'bank' });
+    out.push({ key: 'cash', name: 'Dinheiro', icon: 'banknote', color: 'var(--s6)', balance: Math.round(balance * 100) / 100, sub: 'Na carteira', group: 'bank' });
   }
   for (const i of investBalances(all, settings)) {
     out.push({ key: `inv:${i.id}`, name: investName(i.id), icon: 'trending', color: 'var(--s1)', balance: i.invested, sub: 'Investido', group: 'invest' });

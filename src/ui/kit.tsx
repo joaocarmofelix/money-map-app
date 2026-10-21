@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Flame, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Flame, X } from 'lucide-react';
 import { db } from '../lib/db';
 import { accountName, indexCategories, investName, type CatIndex } from '../lib/categories';
 import type { Category, Person, Tx } from '../lib/types';
@@ -97,11 +98,14 @@ export function TxRow({ t, onClick }: { t: Tx; onClick: () => void }) {
         ? `Tirado do apparte ${t.pot}`
         : `Guardado no apparte ${t.pot}`
     : null;
-  const base = potTitle ?? (person ? person.name : t.source === 'import' ? pretty(t.description) : t.description);
+  const cashTitle = t.cash && t.account !== 'cash' ? (t.amount > 0 ? 'Depósito de dinheiro' : 'Levantamento de dinheiro') : null;
+  const base = potTitle ?? cashTitle ?? (person ? person.name : t.source === 'import' ? pretty(t.description) : t.description);
   const title = t.note && t.source === 'import' ? (person ? `${person.name} · ${t.note}` : t.note) : base;
   const sub = isTr
     ? t.cash
-      ? 'Levantamento · para Dinheiro'
+      ? t.amount > 0
+        ? 'Da carteira para o banco'
+        : 'Do banco para a carteira'
       : t.invest
       ? `Investimento · ${investName(t.invest)}`
       : t.pot
@@ -192,10 +196,11 @@ export function Sheet({
   const closeRef = useRef(close);
   closeRef.current = close;
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current();
-    window.addEventListener('keydown', k);
     // Android back button closes the sheet instead of leaving the app.
     const entry = { close: () => closeRef.current(), popped: false };
+    // Esc closes only the sheet on top.
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && sheetStack[sheetStack.length - 1] === entry && closeRef.current();
+    window.addEventListener('keydown', k);
     sheetStack.push(entry);
     history.pushState({ sheet: true }, '');
     document.body.style.overflow = 'hidden';
@@ -209,7 +214,8 @@ export function Sheet({
       }
     };
   }, []);
-  return (
+  // Rendered at the end of <body> so a sheet opened from inside another sheet covers the whole screen.
+  return createPortal(
     <div className={`scrim${closing ? ' closing' : ''}`} onClick={close}>
       <div
         className={`sheet${tall ? ' tall' : ''}${closing ? ' closing' : ''}${start.current !== null ? ' dragging' : ''}`}
@@ -248,7 +254,68 @@ export function Sheet({
         <div className="sheet-body">{children}</div>
         {footer && <div className="sheet-foot">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
+  );
+}
+
+export interface PickOption<T extends string | number> {
+  value: T;
+  label: string;
+  hint?: string;
+}
+
+/**
+ * A phone-friendly replacement for <select>: looks like a field, opens a bottom sheet with
+ * big tappable rows, closes as soon as you pick.
+ */
+export function Picker<T extends string | number>({
+  id,
+  value,
+  options,
+  onChange,
+  title,
+}: {
+  id?: string;
+  value: T;
+  options: PickOption<T>[];
+  onChange: (v: T) => void;
+  title: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const cur = options.find((o) => o.value === value);
+  return (
+    <>
+      <button type="button" id={id} className="picker-btn" onClick={() => setOpen(true)} aria-haspopup="dialog">
+        <span>{cur?.label ?? 'Escolher'}</span>
+        <ChevronDown size={18} aria-hidden />
+      </button>
+      {open && (
+        <Sheet onClose={() => setOpen(false)} label={title} title={title}>
+          <div className="pick-list" role="listbox" aria-label={title}>
+            {options.map((o) => (
+              <button
+                key={String(o.value)}
+                type="button"
+                role="option"
+                aria-selected={o.value === value}
+                className="pick-row"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+              >
+                <span>
+                  {o.label}
+                  {o.hint && <small>{o.hint}</small>}
+                </span>
+                {o.value === value && <Check size={20} aria-hidden />}
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
+    </>
   );
 }
 
