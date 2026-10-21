@@ -12,7 +12,7 @@ export const INVESTMENTS = [{ id: 't212', name: 'Trading 212', match: /TRADING ?
 export const investName = (id: string) => INVESTMENTS.find((i) => i.id === id)?.name ?? id;
 
 /** Ids of the default income categories, for rules saved before rules carried their own flag. */
-export const DEFAULT_INCOME_IDS = new Set(['salario', 'reembolso', 'outros-in', 'subsidios', 'irs', 'sidehustle-in', 'invest-in', 'cartao-refeicao', 'eu-in', 'pessoas-in']);
+export const DEFAULT_INCOME_IDS = new Set(['salario', 'reembolso', 'outros-in', 'subsidios', 'irs', 'sidehustle-in', 'invest-in', 'cartao-refeicao', 'eu-in', 'pessoas-in', 'familia-in', 'amigos-in']);
 
 let o = 0;
 const c = (id: string, name: string, icon: string, color: number, extra: Partial<Category> = {}): Category => ({
@@ -83,7 +83,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   c('compras', 'Compras', 'shopping', 4),
   sub('compras', 'tecnologia', 'Tecnologia', 'laptop'),
   sub('compras', 'casa-compras', 'Coisas para casa', 'package'),
-  c('sidehustle', 'Side hustle', 'briefcase', 0),
+  c('sidehustle', 'Side hustles', 'briefcase', 0),
   sub('sidehustle', 'sh-ferramentas', 'Ferramentas e software', 'laptop'),
   sub('sidehustle', 'sh-dominios', 'Domínios e alojamento', 'globe'),
   sub('sidehustle', 'sh-marketing', 'Publicidade', 'megaphone'),
@@ -119,8 +119,10 @@ export const DEFAULT_CATEGORIES: Category[] = [
   c('irs', 'IRS Jovem e reembolso de IRS', 'landmark', 1, { income: true }),
   c('sidehustle-in', 'Side hustles', 'store', 0, { income: true }),
   c('invest-in', 'Rendimentos de investimentos', 'trending', 6, { income: true }),
-  c('pessoas-in', 'Recebido de pessoas', 'handheart', 4, { income: true }),
-  c('eu-in', 'De contas minhas que não acompanho', 'wallet', 1, { income: true }),
+  c('pessoas-in', 'Pessoas', 'handheart', 1, { income: true }),
+  sub('pessoas-in', 'eu-in', 'Eu (contas que não acompanho)', 'wallet', { income: true }),
+  sub('pessoas-in', 'familia-in', 'Família', 'heart', { income: true }),
+  sub('pessoas-in', 'amigos-in', 'Amigos e contas divididas', 'handheart', { income: true }),
   c('outros-in', 'Outras entradas', 'coins', 7, { income: true }),
 ];
 

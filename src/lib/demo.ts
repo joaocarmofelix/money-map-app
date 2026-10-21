@@ -27,6 +27,8 @@ interface Ev {
   personId?: number;
   note?: string;
   tags?: string[];
+  /** ATM withdrawal or cash deposit on a bank account */
+  cash?: boolean;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -36,7 +38,8 @@ export function buildDemo(todayIso: string) {
   const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length)];
   const amt = (lo: number, hi: number) => Math.round((lo + r() * (hi - lo)) * 100) / 100;
   const endYm = todayIso.slice(0, 7);
-  const lastDay = Number(todayIso.slice(8, 10)) - 1;
+  // Up to yesterday, but on the 1st of the month use today so dates stay valid.
+  const lastDay = Math.max(1, Number(todayIso.slice(8, 10)) - 1);
   const months: string[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(Date.UTC(Number(endYm.slice(0, 4)), Number(endYm.slice(5, 7)) - 1 - i, 1));
@@ -103,7 +106,7 @@ export function buildDemo(todayIso: string) {
     if (r() > 0.5) add({ account: 'mil', date: `${m}-${pad(1 + Math.floor(r() * days))}`, amount: -amt(8, 30), description: 'TRF MB WAY P/ RICARDO AMIGO CS', categoryId: 'amigos' });
     // Family: a sister who sometimes sends money back, sometimes gets some
     if (mi % 2 === 0 && d(16) >= 16) add({ account: 'mil', date: `${m}-16`, amount: -amt(15, 40), description: 'TRF MB WAY P/ MARIA EXEMPLO CS', categoryId: 'familia', personId: 1, note: pick(['Metade das compras para casa', 'Prenda da mãe (metade)', 'Bilhetes do concerto']) });
-    if (mi % 3 === 1 && d(20) >= 20) add({ account: 'mil', date: `${m}-20`, amount: 30, description: 'TRF. P/O MARIA EXEMPLO', tags: ['Acerto de contas'], categoryId: 'pessoas-in', personId: 1, note: 'Devolveu metade dos bilhetes' });
+    if (mi % 3 === 1 && d(20) >= 20) add({ account: 'mil', date: `${m}-20`, amount: 30, description: 'TRF. P/O MARIA EXEMPLO', tags: ['Acerto de contas'], categoryId: 'familia-in', personId: 1, note: 'Devolveu metade dos bilhetes' });
   });
 
   // Bought concert tickets for both; Maria pays her half back over time
@@ -130,17 +133,25 @@ export function buildDemo(todayIso: string) {
 
   // Running balances per account (bank-style), oldest first
   const start: Record<string, number> = { mil: 1450, bkt: 6800, 'mil-apparte': 6800 };
+  // Cash: an ATM withdrawal and a cash purchase, then a console sold for cash (side hustle)
+  // and that money paid into the bank a few days later, which is a transfer, not new income.
+  add({ account: 'mil', date: `${months[3]}-05`, amount: -40, description: 'LEVANTAMENTO 7782 MB ALMADA', kind: 'transfer', cash: true });
+  add({ account: 'cash', date: `${months[3]}-06`, amount: -12, description: 'Feira da Ladra', categoryId: 'compras' });
+  add({ account: 'cash', date: `${months[4]}-06`, amount: 150, description: 'Venda consola usada (OLX)', categoryId: 'sidehustle-in', note: 'Nintendo Switch antiga' });
+  add({ account: 'mil', date: `${months[4]}-09`, amount: 150, description: 'DEP NUMERARIO ATM ALMADA', kind: 'transfer', cash: true });
+
   ev.sort((a, b) => a.date.localeCompare(b.date) || b.amount - a.amount);
   const bal = { ...start };
   const txs: Tx[] = ev.map((e, i) => {
-    bal[e.account] = Math.round((bal[e.account] + e.amount) * 100) / 100;
+    const manual = e.account === 'cash';
+    if (!manual) bal[e.account] = Math.round((bal[e.account] + e.amount) * 100) / 100;
     return {
       key: `demo|${i}`,
       account: e.account,
       date: e.date,
       amount: e.amount,
       description: e.description,
-      balance: bal[e.account],
+      balance: manual ? undefined : bal[e.account],
       kind: e.kind ?? (e.amount < 0 ? 'expense' : 'income'),
       categoryId: e.categoryId,
       pot: e.pot,
@@ -148,7 +159,8 @@ export function buildDemo(todayIso: string) {
       personId: e.personId,
       note: e.note,
       tags: e.tags,
-      source: 'import' as const,
+      cash: e.cash,
+      source: manual ? ('manual' as const) : ('import' as const),
     };
   });
 

@@ -3,7 +3,7 @@ import { ChevronDown, Plus } from 'lucide-react';
 import { db, deleteCategory } from '../lib/db';
 import type { Category } from '../lib/types';
 import { fmt } from '../lib/text';
-import { CatIcon, Sheet, toast, useCats } from './kit';
+import { CatIcon, Picker, Sheet, toast, useCats } from './kit';
 import { IconPicker } from './icons';
 
 const SWATCHES = [0, 1, 2, 3, 4, 5, 6, 7];
@@ -58,14 +58,7 @@ export function CategoryEditor({ cat, parentId, income, onClose }: { cat?: Categ
         {!hasKids && (
           <div className="field">
             <label htmlFor="c-parent">Dentro de</label>
-            <select id="c-parent" value={parent} onChange={(e) => setParent(e.target.value)}>
-              <option value="">Nenhuma (categoria principal)</option>
-              {parents.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <Picker id="c-parent" title="Dentro de" value={parent} onChange={setParent} options={[{ value: '', label: 'Nenhuma (categoria principal)' }, ...parents.map((p) => ({ value: p.id, label: p.name }))]} />
           </div>
         )}
         {!parent && (
@@ -145,12 +138,17 @@ export function CategoriesPage() {
       <p className="small muted" style={{ margin: 0 }}>
         Desliga as categorias que não usas: deixam de aparecer quando categorizas, mas continuam a contar nos relatórios.
       </p>
-      <div className="seg" role="group" aria-label="Tipo de categoria">
-        <button aria-pressed={type === 'out'} onClick={() => setType('out')}>
-          Gastos
-        </button>
-        <button aria-pressed={type === 'in'} onClick={() => setType('in')}>
-          Entradas
+      <div className="sticky-tools">
+        <div className="seg" role="group" aria-label="Tipo de categoria">
+          <button aria-pressed={type === 'out'} onClick={() => (setType('out'), window.scrollTo({ top: 0 }))}>
+            Gastos
+          </button>
+          <button aria-pressed={type === 'in'} onClick={() => (setType('in'), window.scrollTo({ top: 0 }))}>
+            Entradas
+          </button>
+        </div>
+        <button className="btn sm new-cat" onClick={() => setEdit({ income: type === 'in' })}>
+          <Plus size={17} /> Nova
         </button>
       </div>
       {roots.map((r) => (
@@ -193,9 +191,6 @@ export function CategoriesPage() {
           )}
         </section>
       ))}
-      <button className="btn ghost" onClick={() => setEdit({ income: type === 'in' })}>
-        <Plus size={18} /> Nova categoria
-      </button>
       {edit && <CategoryEditor {...edit} onClose={() => setEdit(null)} />}
     </div>
   );

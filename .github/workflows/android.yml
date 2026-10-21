@@ -1,0 +1,60 @@
+name: Android APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android
+  cancel-in-progress: false
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run
+      # Web app without service worker, copied into the Android project.
+      - run: npm run build:native
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/moneymap.jks"
+            echo "MM_KEYSTORE=$RUNNER_TEMP/moneymap.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Sem ANDROID_KEYSTORE_BASE64: o APK sai assinado com uma chave de teste e não vai dar para o atualizar por cima."
+          fi
+      - name: Build APK
+        working-directory: android
+        env:
+          MM_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          MM_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk "MoneyMap-1.1.${{ github.run_number }}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoneyMap-1.1.${{ github.run_number }}
+          path: MoneyMap-1.1.${{ github.run_number }}.apk
+      # A release per build: open the repo's Releases page on the phone and tap the APK to install.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.1.${{ github.run_number }}
+          name: MoneyMap 1.1.${{ github.run_number }}
+          body: Instala no Android. Atualiza por cima da versão anterior e mantém os teus dados.
+          files: MoneyMap-1.1.${{ github.run_number }}.apk

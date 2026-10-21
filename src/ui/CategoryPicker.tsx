@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
+import { CatGrid } from './CatGrid';
 import { db } from '../lib/db';
 import { norm } from '../lib/text';
 import { CatIcon, useCats } from './kit';
@@ -99,44 +100,27 @@ export function CategoryPicker({ value, onPick, income }: { value?: string; onPi
         </div>
       ) : (
         <>
-          <div className="cats">
-            {roots.map((c) => {
-              const has = cx.children(c.id).some((k) => !k.hidden);
-              const selected = value === c.id || cx.root(value)?.id === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  className="cat"
-                  aria-pressed={selected}
-                  aria-expanded={has ? open === c.id : undefined}
-                  onClick={() => (has ? setOpen(open === c.id ? undefined : c.id) : choose(c.id))}
-                >
-                  <CatIcon id={c.id} />
-                  {c.name}
-                  {has && <ChevronDown size={14} className="more" aria-hidden />}
-                </button>
-              );
-            })}
-          </div>
-          {openRoot && (
-            <div>
-              <p className="small muted" style={{ margin: '0 0 6px' }}>
-                {openRoot.name}
-              </p>
-              <div className="subcats">
-                <button type="button" aria-pressed={value === openRoot.id} onClick={() => choose(openRoot.id)}>
-                  Geral
-                </button>
-                {kids.map((k) => (
-                  <button key={k.id} type="button" aria-pressed={value === k.id} onClick={() => choose(k.id)}>
-                    <Icon name={k.icon} size={15} />
-                    {k.name}
+          <CatGrid
+            items={roots}
+            open={openRoot?.id}
+            pressed={(c) => value === c.id || cx.root(value)?.id === c.id}
+            onTile={(c) => (cx.children(c.id).some((k) => !k.hidden) ? setOpen(open === c.id ? undefined : c.id) : choose(c.id))}
+            panel={
+              openRoot && (
+                <div className="subcats">
+                  <button type="button" aria-pressed={value === openRoot.id} onClick={() => choose(openRoot.id)}>
+                    Geral
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
+                  {kids.map((k) => (
+                    <button key={k.id} type="button" aria-pressed={value === k.id} onClick={() => choose(k.id)}>
+                      <Icon name={k.icon} size={15} />
+                      {k.name}
+                    </button>
+                  ))}
+                </div>
+              )
+            }
+          />
         </>
       )}
     </div>

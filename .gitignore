@@ -29,3 +29,7 @@ dist-ssr
 *.json.bak
 moneymap-*.json
 dist-artifact
+# Never commit signing keys
+*.jks
+*.keystore
+keystore.properties

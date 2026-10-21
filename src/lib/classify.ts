@@ -7,9 +7,10 @@ import { DEFAULT_INCOME_IDS, INVESTMENTS } from './categories';
  * Apparte name from a description. Millennium writes:
  *  - putting money in:  "TRF P/ MillenniumBcp     Stocks" / "TRF DE Transferencia MillenniumBcp Stocks"
  *  - taking money out:  "TRF DE Apparte - Moneybox" (on the main account)
+ *  - sometimes just "Apparte Moneybox", without "TRF" or the dash
  */
 export function potName(desc: string, knownPots: string[] = []): string | null {
-  const m = desc.match(/MillenniumBcp\s+(.+)$/i) ?? desc.match(/\bApparte\s*-\s*(.+)$/i);
+  const m = desc.match(/MillenniumBcp\s+(.+)$/i) ?? desc.match(/\bApparte\b\s*[-:]?\s*(\S.*)$/i);
   if (!m) return null;
   const raw = m[1].replace(/\s+/g, ' ').trim();
   // The apparte side truncates names ("Future Go"); map back to a known pot.
@@ -30,6 +31,7 @@ export function classify(
   knownPots: string[],
 ): { kind: Kind; pot?: string; invest?: string; cash?: boolean } {
   if (t.amount < 0 && isCashWithdrawal(t.description)) return { kind: 'transfer', cash: true };
+  if (t.amount > 0 && isCashDeposit(t.description)) return { kind: 'transfer', cash: true };
   const inv = INVESTMENTS.find((i) => i.match.test(t.description));
   if (inv) return { kind: 'transfer', invest: inv.id };
   const pot = potName(t.description, knownPots);
@@ -51,6 +53,16 @@ export function matchRule(desc: string, rules: Rule[], kind?: Kind): Rule | unde
   return best;
 }
 
+/**
+ * Paying cash into the bank ("DEP NUMERARIO", "DEPOSITO EM NUMERARIO", "DEP. ATM", "Ingreso efectivo").
+ * The money comes from your wallet, so it isn't income: what you got for it was logged when you
+ * received the cash (e.g. a console sold for cash under Side hustles).
+ */
+export function isCashDeposit(desc: string): boolean {
+  const d = norm(desc);
+  return /\bDEP(OSITO|\.)?\s*(EM\s+|DE\s+)?(NUMERARIO|NUM|DINHEIRO|ATM|MB|NOTAS)\b/.test(d) || /\bINGRESO\s+(EN\s+)?EFECTIVO\b/.test(d);
+}
+
 /** ATM withdrawals ("LEVANTAMENTO", "LEV. ATM"): the money goes to your wallet, it isn't spent yet. */
 export function isCashWithdrawal(desc: string): boolean {
   const d = norm(desc);
@@ -66,6 +78,6 @@ export function personFor(desc: string, people: Person[]): Person | undefined {
 }
 
 export function personCategory(p: Person, amount: number): string {
-  if (amount > 0) return 'pessoas-in';
+  if (amount > 0) return p.relation === 'familia' ? 'familia-in' : p.relation === 'amigos' ? 'amigos-in' : 'pessoas-in';
   return p.relation === 'familia' ? 'familia' : p.relation === 'amigos' ? 'amigos' : 'pessoas';
 }

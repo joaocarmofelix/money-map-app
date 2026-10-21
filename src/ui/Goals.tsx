@@ -5,7 +5,7 @@ import { db } from '../lib/db';
 import type { Goal, Settings, Tx } from '../lib/types';
 import { accountList, goalProgress, type GoalProgress } from '../lib/stats';
 import { fmt, today } from '../lib/text';
-import { Bar, IconTile, Sheet, toast, useCats } from './kit';
+import { Bar, IconTile, Picker, Sheet, toast, useCats } from './kit';
 import { IconPicker } from './icons';
 
 const dmy = (d: string) => d.split('-').reverse().join('/');
@@ -117,14 +117,7 @@ export function GoalEditor({ goal, txs, settings, onClose }: { goal?: Goal; txs:
         {type === 'balance' ? (
           <div className="field">
             <label htmlFor="g-acc">Onde</label>
-            <select id="g-acc" value={account} onChange={(e) => setAccount(e.target.value)}>
-              <option value="networth">Património total</option>
-              {accounts.map((a) => (
-                <option key={a.key} value={a.key}>
-                  {a.name} ({fmt(a.balance)})
-                </option>
-              ))}
-            </select>
+            <Picker id="g-acc" title="Onde" value={account} onChange={setAccount} options={[{ value: 'networth', label: 'Património total' }, ...accounts.map((a) => ({ value: a.key, label: a.name, hint: fmt(a.balance) }))]} />
           </div>
         ) : (
           <p className="small muted" style={{ margin: 0 }}>
