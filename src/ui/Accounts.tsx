@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getSettings, knownPots, updateSettings } from '../lib/db';
 import { INVESTMENTS } from '../lib/categories';
-import { accountList, computedBalance } from '../lib/stats';
+import { accountList, computedBalance, potWarnings } from '../lib/stats';
 import type { Settings, Tx } from '../lib/types';
 import { fmt } from '../lib/text';
 import { IconTile, toast } from './kit';
@@ -13,7 +13,7 @@ const num = (v: string) => {
 };
 
 /** Every account with its home-screen switch, plus starting balances for appartes and investments. */
-export function AccountsPage({ txs }: { txs: Tx[] }) {
+export function AccountsPage({ txs, onOpen }: { txs: Tx[]; onOpen?: (t: Tx) => void }) {
   const [s, setS] = useState<Settings | null>(null);
   const pots = useLiveQuery(knownPots, []) ?? [];
   useEffect(() => {
@@ -27,6 +27,7 @@ export function AccountsPage({ txs }: { txs: Tx[] }) {
     const first = txs.filter((t) => t.account === 'mil-apparte' && t.source === 'import').reduce((m, t) => (t.date < m ? t.date : m), '9999');
     return { total: c.opening, date: first };
   }, [txs]);
+  const warnings = useMemo(() => (s ? potWarnings(txs, s) : []), [txs, s]);
   if (!s) return null;
   const startLabel = s.trackFrom ? s.trackFrom.split('-').reverse().join('/') : 'o primeiro extrato';
 
@@ -92,6 +93,22 @@ export function AccountsPage({ txs }: { txs: Tx[] }) {
               </div>
             );
           })()}
+          {warnings.map((w) => (
+            <div className="pot-warn" key={w.pot}>
+              <b>
+                {w.pot} fica abaixo de 0 a {w.tx.date.split('-').reverse().join('/')} ({fmt(w.balance)})
+              </b>
+              <span className="small">
+                Um apparte não pode ficar negativo. Ou o valor inicial de {w.pot} está baixo, ou algum movimento está no apparte errado. Confirma na app do Millennium e, se for o caso, abre o
+                movimento e muda o apparte.
+              </span>
+              {onOpen && (
+                <button className="link" onClick={() => onOpen(w.tx)}>
+                  Ver movimento de {fmt(w.tx.amount)}
+                </button>
+              )}
+            </div>
+          ))}
           {pots.map((p) => (
             <div className="field" key={p}>
               <label htmlFor={`pot-${p}`}>{p}</label>

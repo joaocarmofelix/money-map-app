@@ -115,6 +115,27 @@ export function potBalances(all: Tx[], settings: Settings, upTo?: string): { pot
   return [...m.entries()].map(([pot, balance]) => ({ pot, balance })).sort((a, b) => b.balance - a.balance);
 }
 
+/**
+ * The first movement that takes each apparte below zero. Appartes can't go negative, so this means
+ * a starting balance is off or a movement was put on the wrong apparte.
+ */
+export function potWarnings(all: Tx[], settings: Settings): { pot: string; tx: Tx; balance: number }[] {
+  const run = new Map<string, number>(Object.entries(settings.potStart));
+  const seen = new Set<string>();
+  const out: { pot: string; tx: Tx; balance: number }[] = [];
+  const legs = all.filter((t) => t.account === 'mil-apparte' && t.pot).sort((a, b) => a.date.localeCompare(b.date) || (a.id ?? 0) - (b.id ?? 0));
+  // In statement order: the first movement that leaves the apparte short is the one to check.
+  for (const t of legs) {
+    const b = Math.round(((run.get(t.pot!) ?? 0) + t.amount) * 100) / 100;
+    run.set(t.pot!, b);
+    if (b < -0.005 && !seen.has(t.pot!)) {
+      seen.add(t.pot!);
+      out.push({ pot: t.pot!, tx: t, balance: b });
+    }
+  }
+  return out;
+}
+
 /** Latest known balance per account, from the statements. */
 export function accountBalances(all: Tx[]): Record<string, { balance: number; date: string }> {
   const out: Record<string, { balance: number; date: string }> = {};
@@ -175,8 +196,9 @@ export function accountList(all: Tx[], settings: Settings): AccountView[] {
     if (v.manualAfter) parts.push(`+ ${v.manualAfter} apontados`);
     out.push({ key: id, name: BANKS[id].name, icon: 'landmark', color: BANKS[id].color, balance: v.balance, sub: parts.join(' · '), group: 'bank', mismatch: v.mismatch || undefined });
   }
+  const odd = new Set(potWarnings(all, settings).map((w) => w.pot));
   potBalances(all, settings).forEach((p, i) =>
-    out.push({ key: `pot:${p.pot}`, name: p.pot, icon: 'piggy', color: POT_COLORS[i % POT_COLORS.length], balance: p.balance, sub: 'Apparte Millennium', group: 'pot' }),
+    out.push({ key: `pot:${p.pot}`, name: p.pot, icon: 'piggy', color: POT_COLORS[i % POT_COLORS.length], balance: p.balance, sub: odd.has(p.pot) ? 'Ficou abaixo de 0: vê Mais › Contas' : 'Apparte Millennium', group: 'pot' }),
   );
   const un = unassignedPotMoney(all, settings);
   if (un !== null && Math.abs(un) > 0.005) {

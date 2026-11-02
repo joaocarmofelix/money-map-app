@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, Home as HomeIcon, List, Menu, PieChart, Plus } from 'lucide-react';
-import { db, getSettings, inDemo, loadDemo, refreshOpen, updateSettings } from './lib/db';
+import { db, getSettings, inDemo, loadDemo, normalizePotNames, refreshOpen, updateSettings } from './lib/db';
 import { askNotifications, isNative, onOpenTarget, syncReminders, updateWidget } from './lib/native';
 import { shiftMonth, today } from './lib/text';
 import type { Tx } from './lib/types';
@@ -60,7 +60,9 @@ function Shell() {
 
   useEffect(() => {
     // Fix movements an older version left uncategorised (e.g. apparte withdrawals).
-    refreshOpen().catch(() => {});
+    normalizePotNames()
+      .then(refreshOpen)
+      .catch(() => {});
     if (params.toString()) history.replaceState(null, '', location.pathname);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -217,7 +219,7 @@ function Shell() {
             </header>
             {page === 'import' && <ImportPage onTriage={(intro) => setTriage({ intro })} />}
             {page === 'categories' && <CategoriesPage />}
-            {page === 'accounts' && <AccountsPage txs={txs} />}
+            {page === 'accounts' && <AccountsPage txs={txs} onOpen={setEditing} />}
             {page === 'goals' && <GoalsPage txs={txs} settings={settings} />}
             {page === 'people' && <PeoplePage txs={txs} />}
             {page === 'setup' && <SetupPage />}

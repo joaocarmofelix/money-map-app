@@ -178,7 +178,12 @@ export interface PinLook {
   mouth: 'smile' | 'grin' | 'cat' | 'tongue' | 'flat' | 'teeth' | 'smirk';
   nose: 'none' | 'dot' | 'button' | 'triangle';
   glasses: 'none' | 'round' | 'square' | 'sun' | 'heart' | 'monocle';
-  hair: 'none' | 'tuft' | 'cap' | 'beanie' | 'bow' | 'crown' | 'sprout' | 'tophat' | 'headphones' | 'party';
+  hair: 'none' | 'tuft' | 'bowl' | 'spiky' | 'curly' | 'mohawk' | 'bun' | 'pigtails' | 'long';
+  hairColor: 'brown' | 'black' | 'blonde' | 'ginger' | 'pink' | 'blue' | 'white';
+  hat:
+    | 'none' | 'cap' | 'beanie' | 'tophat' | 'crown' | 'party' | 'cowboy' | 'chef' | 'wizard' | 'viking'
+    | 'grad' | 'santa' | 'propeller' | 'headphones' | 'halo' | 'bow' | 'flower' | 'sprout';
+  acc: 'none' | 'bowtie' | 'tie' | 'scarf' | 'medal' | 'necklace' | 'coin' | 'badge' | 'cape';
   detail: 'blush' | 'freckles' | 'mustache' | 'brows' | 'bandaid' | 'none';
 }
 

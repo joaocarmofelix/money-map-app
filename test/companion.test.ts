@@ -53,3 +53,11 @@ describe('backup with statement files', () => {
     expect([...new Uint8Array(await f.blob.arrayBuffer())]).toEqual([37, 80, 68, 70, 0, 255, 128]);
   });
 });
+
+describe('Pin look', () => {
+  it('moves a hat saved under the old "hair" option to the hat slot', async () => {
+    const { fullLook } = await import('../src/ui/Companion');
+    expect(fullLook({ hair: 'crown' as never })).toMatchObject({ hair: 'none', hat: 'crown' });
+    expect(fullLook({ hair: 'curly', hat: 'cap' })).toMatchObject({ hair: 'curly', hat: 'cap', acc: 'none' });
+  });
+});

@@ -25,7 +25,7 @@ export const MORE_TITLES: Record<MorePage, string> = {
 export function MoreMenu({ open }: { open: (p: MorePage) => void }) {
   const rules = useLiveQuery(() => db.rules.count(), []) ?? 0;
   const items: { id: MorePage; icon: typeof Tags; sub: string }[] = [
-    { id: 'import', icon: FileUp, sub: 'PDF do Millennium, Excel do Bankinter' },
+    { id: 'import', icon: FileUp, sub: 'Extratos do Millennium e do Bankinter' },
     { id: 'accounts', icon: Wallet, sub: 'Appartes, Trading 212 e o que aparece no início' },
     { id: 'goals', icon: Target, sub: 'Juntar um valor, poupar todos os meses' },
     { id: 'categories', icon: Tags, sub: 'Ativar, criar e definir orçamentos' },

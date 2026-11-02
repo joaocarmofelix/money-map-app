@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { Kind, Tx } from '../lib/types';
-import { categorize, db } from '../lib/db';
+import { categorize, db, knownPots, setPot } from '../lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { accountName, INVESTMENTS, investName } from '../lib/categories';
 import { fmt, pretty, suggestPattern } from '../lib/text';
-import { CatIcon, Sheet, toast, useCats } from './kit';
+import { CatIcon, Picker, Sheet, toast, useCats } from './kit';
 import { Banknote, Sparkles } from 'lucide-react';
 import { buildSuggester, type Suggestion } from '../lib/suggest';
 import { CategoryPicker } from './CategoryPicker';
@@ -135,6 +136,7 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
                   ? `Movimento do apparte ${t.pot}. Não conta como gasto.`
                   : 'Transferência entre contas tuas. Não conta como gasto.'}
             </p>
+            {t.pot && <PotChoice t={t} />}
             {!t.pot && !t.invest && !t.cash && <OwnTransferChoices t={t} onDone={onClose} />}
             <button className="btn ghost" onClick={() => setKind(t.amount < 0 ? 'expense' : 'income')}>
               Não é para mim, contar como {t.amount < 0 ? 'gasto' : 'entrada'} normal
@@ -179,5 +181,29 @@ export function EditTx({ t, onClose, history }: { t: Tx; onClose: () => void; hi
           ))}
       </div>
     </Sheet>
+  );
+}
+
+/** Which apparte a transfer belongs to. The bank names it; this is for when it got it wrong. */
+function PotChoice({ t }: { t: Tx }) {
+  const pots = useLiveQuery(knownPots, []) ?? [];
+  const [cur, setCur] = useState(t.pot!);
+  const list = [...new Set([...pots, cur])].sort((a, b) => a.localeCompare(b));
+  return (
+    <div className="field">
+      <label htmlFor="pot-pick">Apparte</label>
+      <Picker
+        id="pot-pick"
+        title="De que apparte é?"
+        value={cur}
+        options={list.map((p) => ({ value: p, label: p }))}
+        onChange={async (p) => {
+          setCur(p);
+          await setPot(t.id!, p);
+          toast(`Passou para ${p}`);
+        }}
+      />
+      <span className="hint">Muda também a outra metade da transferência, na outra conta.</span>
+    </div>
   );
 }

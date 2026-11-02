@@ -104,7 +104,7 @@ export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void })
           <FileUp size={24} />
         </span>
         <b>{busy ? 'A ler…' : 'Escolher extratos'}</b>
-        <span className="small muted">PDF do Millennium ou Excel do Bankinter. Podes escolher vários; os repetidos são ignorados.</span>
+        <span className="small muted">PDF do Millennium, PDF ou Excel do Bankinter. Podes escolher vários; os repetidos são ignorados.</span>
       </label>
 
       {results.map((r, i) => (
@@ -146,9 +146,8 @@ export function ImportPage({ onTriage }: { onTriage: (intro?: string) => void })
         <details className="how">
           <summary>Bankinter</summary>
           <ol className="small">
-            <li>No site, abre os movimentos da conta e exporta para Excel.</li>
-            <li>Podes exportar os últimos 90 dias quando quiseres: a app só guarda o que ainda não tem.</li>
-            <li>Se o ficheiro disser “Últimos 15 movimentos”, filtra por datas antes de exportar.</li>
+            <li>O mais simples: o extrato mensal em PDF (“Extracto”), que chega por email ou fica nos documentos da app. Escolhe-o aqui tal como está.</li>
+            <li>Também dá o Excel dos movimentos, exportado no site; a app só guarda o que ainda não tem, por isso podes usar os dois.</li>
           </ol>
         </details>
       </section>

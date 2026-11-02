@@ -1,6 +1,7 @@
 import type { ParseResult } from '../types';
 import { parseMillenniumLines } from './millennium';
 import { parseBankinterRows } from './bankinter';
+import { parseBankinterPdfLines } from './bankinterPdf';
 
 /** Rebuilds visual text lines from a PDF using pdf.js item positions. */
 export async function pdfToLines(data: ArrayBuffer): Promise<string[]> {
@@ -55,7 +56,8 @@ export async function parseFile(file: File): Promise<ParseResult> {
     const lines = await pdfToLines(buf);
     const joined = lines.join('\n');
     if (/MILLENNIUM|MILLENNIUMBCP/i.test(joined)) return parseMillenniumLines(lines);
-    return { bank: '?', txs: [], warnings: ['Este PDF não parece ser um extrato Millennium.'], closing: {} };
+    if (/BANKINTER/i.test(joined) && /EXTRACTO DE MOVIMENTOS/i.test(joined)) return parseBankinterPdfLines(lines);
+    return { bank: '?', txs: [], warnings: ['Não reconheci este PDF. Por agora leio os extratos do Millennium e do Bankinter.'], closing: {} };
   }
   if (/\.(xls|xlsx|csv)$/.test(name)) {
     const XLSX = await import('xlsx');

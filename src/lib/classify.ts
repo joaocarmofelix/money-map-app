@@ -9,10 +9,16 @@ import { DEFAULT_INCOME_IDS, INVESTMENTS } from './categories';
  *  - taking money out:  "TRF DE Apparte - Moneybox" (on the main account)
  *  - sometimes just "Apparte Moneybox", without "TRF" or the dash
  */
+/** An apparte name without spacing quirks or the "?" an emoji turns into. */
+export function cleanPot(name: string): string {
+  return name.replace(/\s+/g, ' ').trim().replace(/^[^\p{L}\p{N}]+/u, '').trim() || name.trim();
+}
+
 export function potName(desc: string, knownPots: string[] = []): string | null {
   const m = desc.match(/MillenniumBcp\s+(.+)$/i) ?? desc.match(/\bApparte\b\s*[-:]?\s*(\S.*)$/i);
   if (!m) return null;
-  const raw = m[1].replace(/\s+/g, ' ').trim();
+  // Emoji in an apparte's name come out of the PDF as "?" ("? Future Goals"); drop anything before the first letter.
+  const raw = cleanPot(m[1]);
   // The apparte side truncates names ("Future Go"); map back to a known pot.
   const hit = knownPots.find((p) => norm(p).startsWith(norm(raw)) || norm(raw).startsWith(norm(p)));
   return hit ?? raw;
@@ -22,7 +28,12 @@ export function potName(desc: string, knownPots: string[] = []): string | null {
 export function isOwnTransfer(desc: string, ownerNames: string[]): boolean {
   const d = norm(desc);
   if (!/^(TRF|TRANSF|TRANSFERENCIA)/.test(d)) return false;
-  return ownerNames.some((n) => n.trim().length > 3 && d.includes(norm(n)));
+  // Every word of the name, in any order: "JOÃO FÉLIX" also finds "JOAO PEDRO CARMO FELIX".
+  const words = new Set(d.split(/[^A-Z0-9]+/));
+  return ownerNames.some((n) => {
+    const parts = norm(n).split(/[^A-Z0-9]+/).filter((w) => w.length > 1);
+    return n.trim().length > 3 && (d.includes(norm(n)) || (parts.length > 1 && parts.every((w) => words.has(w))));
+  });
 }
 
 export function classify(

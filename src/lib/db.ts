@@ -5,7 +5,7 @@ import { DEFAULT_CATEGORIES, HOUSE_IDS, LEGACY_IDS } from './categories';
 import { buildDemo } from './demo';
 import { planImport, reclassifyOpen } from './importer';
 import { norm } from './text';
-import { matchRule, personCategory, personFor } from './classify';
+import { cleanPot, matchRule, personCategory, personFor } from './classify';
 
 /**
  * Example data lives in its own database ("moneymap-demo"), so trying it never touches your real
@@ -243,6 +243,43 @@ async function refreshOpenIn() {
   const ups = reclassifyOpen(await db.txs.toArray(), await getSettings(), await db.rules.toArray(), await db.people.toArray());
   for (const u of ups) await db.txs.update(u.id, u.patch);
   return ups.length;
+}
+
+/** Folds "? Future Goals" (an emoji the PDF couldn't show) into "Future Goals", in movements and settings. */
+export async function normalizePotNames() {
+  return db.transaction('rw', [db.txs, db.kv], async () => {
+    let n = 0;
+    await db.txs
+      .filter((t) => !!t.pot && cleanPot(t.pot) !== t.pot)
+      .modify((t) => {
+        t.pot = cleanPot(t.pot!);
+        n++;
+      });
+    const s = await getSettings();
+    const potStart: Record<string, number> = {};
+    for (const [k, v] of Object.entries(s.potStart)) potStart[cleanPot(k)] = (potStart[cleanPot(k)] ?? 0) + v;
+    const hidden = s.hiddenAccounts.filter((k) => !k.startsWith('pot:') || cleanPot(k.slice(4)) === k.slice(4));
+    if (n || Object.keys(potStart).length !== Object.keys(s.potStart).length || hidden.length !== s.hiddenAccounts.length) {
+      await db.kv.put({ k: 'settings', v: { ...s, potStart, hiddenAccounts: hidden } });
+    }
+    return n;
+  });
+}
+
+/**
+ * Move an apparte movement to another apparte. The other half of the transfer (same day, opposite
+ * amount, on the other account) moves with it, so both sides keep telling the same story.
+ */
+export async function setPot(txId: number, pot: string) {
+  await db.transaction('rw', db.txs, async () => {
+    const t = await db.txs.get(txId);
+    if (!t || t.pot === pot) return;
+    const other = (await db.txs.where('date').equals(t.date).toArray()).find(
+      (o) => o.id !== t.id && o.pot === t.pot && (o.account === 'mil-apparte') !== (t.account === 'mil-apparte') && Math.abs(o.amount + t.amount) < 0.005,
+    );
+    await db.txs.update(txId, { pot });
+    if (other) await db.txs.update(other.id!, { pot });
+  });
 }
 
 /** Re-checks uncategorised imported movements with the current rules (see reclassifyOpen). */

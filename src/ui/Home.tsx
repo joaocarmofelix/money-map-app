@@ -146,7 +146,7 @@ export function Home({
               <Upload size={26} />
             </div>
             <h2>Importa o teu primeiro extrato</h2>
-            <p>Usa o PDF mensal do Millennium ou o Excel do Bankinter. A app trata do resto.</p>
+            <p>Usa o extrato mensal em PDF do Millennium ou do Bankinter. A app trata do resto.</p>
             <button className="btn" onClick={() => go('import')}>
               Importar extrato
             </button>

@@ -41,3 +41,15 @@ describe('deleting an import', () => {
     expect(back.find((t) => t.description.includes('LOJA'))).toMatchObject({ categoryId: 'compras', source: 'import' });
   });
 });
+
+describe('moving a transfer to another apparte', () => {
+  it('moves both halves', async () => {
+    const { setPot } = await import('../src/lib/db');
+    await clearAll();
+    const a = await db.txs.add({ key: 'a', account: 'mil', date: '2026-05-11', amount: 600, description: 'TRF DE Apparte - Moneybox', kind: 'transfer', pot: 'Moneybox', source: 'import' });
+    const b = await db.txs.add({ key: 'b', account: 'mil-apparte', date: '2026-05-11', amount: -600, description: 'TRF P/ X', kind: 'transfer', pot: 'Moneybox', source: 'import' });
+    const c = await db.txs.add({ key: 'c', account: 'mil-apparte', date: '2026-05-11', amount: -600, description: 'TRF P/ X', kind: 'transfer', pot: 'Fun', source: 'import' });
+    await setPot(a, 'Emergency Funds');
+    expect([(await db.txs.get(a))!.pot, (await db.txs.get(b))!.pot, (await db.txs.get(c))!.pot]).toEqual(['Emergency Funds', 'Emergency Funds', 'Fun']);
+  });
+});

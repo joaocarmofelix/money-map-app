@@ -360,3 +360,53 @@ SALDO FINAL 1 100.00`.split('\n');
     expect(planImport(r.txs, new Set(keys), [], [], s, []).add.length).toBe(0);
   });
 });
+
+describe('appartes', () => {
+  it('cleans names the PDF garbled and flags an apparte going below zero', async () => {
+    const { cleanPot, potName } = await import('../src/lib/classify');
+    const { potWarnings } = await import('../src/lib/stats');
+    expect(cleanPot('? Future Goals')).toBe('Future Goals');
+    expect(potName('TRF P/ Apparte - ? Future Goals', ['Future Goals'])).toBe('Future Goals');
+    const leg = (id: number, date: string, amount: number, pot: string) => ({ id, key: String(id), account: 'mil-apparte', date, amount, pot, description: '', kind: 'transfer', source: 'import' }) as Tx;
+    const s = { ownerNames: [], potStart: { Moneybox: 100 }, trackFrom: '', investStart: {}, hiddenAccounts: [] };
+    const w = potWarnings([leg(1, '2026-01-02', -100, 'Moneybox'), leg(2, '2026-02-02', -60, 'Moneybox'), leg(3, '2026-02-03', 500, 'Moneybox')], s);
+    expect(w.map((x) => [x.pot, x.tx.id, x.balance])).toEqual([['Moneybox', 2, -60]]);
+  });
+});
+
+describe('Bankinter PDF statement', () => {
+  it('reads movements, joins wrapped descriptions and checks the balance', async () => {
+    const { parseBankinterPdfLines } = await import('../src/lib/parsers/bankinterPdf');
+    const lines = `Período a que se referem as informações prestadas no presente extrato: de 2026/09/01 a 2026/09/30
+EXTRACTO DE MOVIMENTOS
+CONTAS À ORDEM
+Data Descritivo Data Movimento Saldo
+Saldo em 2026/09/01 1.000,00
+14/09 Transf imediata de ana teste 14/09 500,00 1.500,00
+15/09 Transf imediata p/ loja teste c - 15/09 -1.015,50 484,50
+reconhecimento
+30/09 Juros credores 1 2026-09-11 a 2026-09-29 30/09 0,64 485,14
+30/09 I.r.s. s/ juro s 30/09 -0,18 484,96
+Saldo em 2026/09/30 484,96
+Caso se verifique ultrapassagem de crédito`.split('\n');
+    const r = parseBankinterPdfLines(lines);
+    expect(r.warnings).toEqual([]);
+    expect(r.closing).toEqual({ bkt: 484.96 });
+    expect(r.txs.map((t) => [t.date, t.amount, t.balance])).toEqual([
+      ['2026-09-14', 500, 1500],
+      ['2026-09-15', -1015.5, 484.5],
+      ['2026-09-30', 0.64, 485.14],
+      ['2026-09-30', -0.18, 484.96],
+    ]);
+    expect(r.txs[1].description).toBe('Transf imediata p/ loja teste c reconhecimento');
+  });
+});
+
+describe('own transfers', () => {
+  it('recognise your name with middle names in between', async () => {
+    const { isOwnTransfer } = await import('../src/lib/classify');
+    expect(isOwnTransfer('Transf imediata de joao pedro carmo felix', ['JOÃO FÉLIX'])).toBe(true);
+    expect(isOwnTransfer('TRF P/ JOAO PEDRO CARMO FELIX', ['JOÃO FÉLIX'])).toBe(true);
+    expect(isOwnTransfer('TRF P/ MARIA EDUARDA CARMO FELIX', ['JOÃO FÉLIX'])).toBe(false);
+  });
+});
